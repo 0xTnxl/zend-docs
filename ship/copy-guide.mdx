@@ -1,0 +1,34 @@
+---
+title: "Copy guide"
+description: "Plain-language rules for anything your users read."
+---
+
+Zend users shouldn't need to know how money moves. Anything they read in your app, your labels and your cards should sound like messaging, not banking or crypto.
+
+## Avoid
+
+Sui, blockchain, chain, on-chain, crypto, token, coin, USDC, stablecoin, wallet, wallet address, address, gas, network fee, transaction, digest, signature, signing, key, seed, escrow, contract, smart contract, zkLogin, proof, explorer.
+
+Zend rejects the main ones in your manifest's `name`, chat action labels, `description`, `developer.name`, and in card text.
+
+## Say instead
+
+| Instead of | Say |
+|---|---|
+| wallet, balance | your balance, your Zend |
+| transfer | send, pay, Zend |
+| escrow link, give link | link, money link |
+| claim | collect |
+| reclaim | take back |
+| expired and returned | expired, money returned |
+| escrow, contract-held | held safely until the rules say who gets it |
+| sent to the creator's wallet | goes straight to {name}. Zend can't get it back. |
+| share wallet address | can send money straight to you |
+| sign the transaction | confirm it's you |
+| transaction failed | That didn't go through. Try again. |
+
+## Other rules
+
+- Show amounts in Naira where you can.
+- Keep labels short: chat actions up to 24 characters, buttons up to 20.
+- Error `message` fields from Zend are for your logs. Show your own copy to users.

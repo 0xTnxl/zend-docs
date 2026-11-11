@@ -1,0 +1,98 @@
+---
+title: "Sign in with Zend"
+description: "Get the current user in your page and verify them on your server."
+---
+
+Every ZApp user is a Zend user. There's no sign-in screen to build: the first time someone opens your app, Zend asks "Continue to {app} as {name}?" and, after that, your page can read who they are.
+
+## In your page
+
+```ts
+import { init } from "@zendfi/appkit";
+
+const zend = init();
+const me = await zend.identity.get();
+// { appUserId: "zu_...", username: "tunde", name: "Tunde", scopes: ["profile"], appSession: "..." }
+```
+
+| Field | Notes |
+|---|---|
+| `appUserId` | `zu_...`. Stable across every ZApp and across username changes. Use it as your user key |
+| `username` | `null` until the user picks one |
+| `name` | Display name |
+| `scopes` | What the user has granted your app |
+| `appSession` | Short-lived token for your server. Valid for 10 minutes |
+
+<Warning>
+Anything your page knows, the user can change. Don't trust `appUserId` from the browser. Send `appSession` to your server and verify it there.
+</Warning>
+
+## On your server
+
+Exchange `appSession` for the verified user, then start your own session.
+
+<CodeGroup>
+```ts Node
+import { ZendServer } from "@zendfi/appkit/server";
+
+const zend = new ZendServer(process.env.ZEND_APP_KEY!);
+
+app.post("/api/login", express.text(), async (req, res) => {
+  try {
+    const user = await zend.verifySession(req.body);
+    // user.app_user_id is now trusted
+    req.session.userId = user.app_user_id;
+    res.sendStatus(204);
+  } catch (e: any) {
+    // e.code: INVALID_APP_SESSION or GRANT_REVOKED
+    res.status(401).json({ error: e.code });
+  }
+});
+```
+
+```bash curl
+curl -X POST https://api.usezend.app/api/zend/v2/apps/token/verify \
+  -H "Authorization: Bearer $ZEND_APP_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"app_session":"<appSession>"}'
+```
+</CodeGroup>
+
+```json Response
+{
+  "app_user_id": "zu_...",
+  "username": "tunde",
+  "name": "Tunde",
+  "avatar": null,
+  "scopes": ["profile", "email"],
+  "email": "t@example.com",
+  "address": "0x..."
+}
+```
+
+`email` comes back only when the user granted `email`. `address` comes back only when they granted `wallet_address`.
+
+| Error | Meaning | What to do |
+|---|---|---|
+| `INVALID_APP_SESSION` | Expired, malformed, or issued to another app | Ask the page for a fresh `appSession` |
+| `GRANT_REVOKED` | The user disconnected your app | Treat them as signed out |
+
+## Opening outside Zend
+
+`zend.environment` tells you where the page is running:
+
+| Value | Where |
+|---|---|
+| `zend-app` | The Zend mobile app's WebView |
+| `zend-web` | The `app.usezend.app` frame |
+| `external` | A plain browser tab |
+
+In `external`, every Zend call rejects with `NOT_IN_ZEND`. Show an "Open in Zend" link to `https://app.usezend.app/apps/<slug>`.
+
+## Testing on staging
+
+`init()` only talks to `https://app.usezend.app` by default. Add other Zend web origins while you test:
+
+```ts
+const zend = init({ zendOrigins: ["https://app.usezend.app", "https://staging.usezend.app"] });
+```

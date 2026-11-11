@@ -1,0 +1,185 @@
+---
+title: "Manifest"
+description: "Every field in zapp.json and the rules Zend checks when you deploy."
+---
+
+The manifest tells Zend where your app lives, what it may do, and how its interactions behave. Keep it in your repo as `zapp.json` and deploy it with [`zend apps deploy`](/cli/apps#deploy).
+
+Each upload creates a new version and makes it active. Zend checks the whole file and returns every problem at once as `422 INVALID_MANIFEST` with an `errors[]` list. Unknown fields are rejected at every level, so a typo fails loudly instead of being ignored.
+
+## Example
+
+```json zapp.json
+{
+  "app": "accident",
+  "name": "Accident",
+  "version": "1.0.0",
+  "origins": ["https://accident.example.com"],
+  "entry": "/",
+  "visibility": "private",
+  "permissions": ["post_card", "pay", "request_payment", "create_link"],
+  "chatActions": [
+    { "id": "challenge", "label": "Challenge", "sheet": "/play", "interaction": "challenge" }
+  ],
+  "cardTypes": ["result", "invite"],
+  "interactionTypes": {
+    "challenge": {
+      "states": ["sent", "accepted", "resolved", "expired"],
+      "initial": "sent",
+      "transitions": {
+        "sent": ["accepted", "expired"],
+        "accepted": [{ "to": "resolved", "serverOnly": true }, "expired"]
+      },
+      "terminal": ["resolved", "expired"]
+    }
+  },
+  "custody": "contract",
+  "webhook": "https://accident.example.com/zend/webhook"
+}
+```
+
+## Fields
+
+<ParamField body="app" type="string" required>
+  Your app slug. 2–31 characters of `a-z`, `0-9` and `-`, starting with a letter or digit. Must match the slug you created.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Shown to users. 1–24 characters, plain language (see [Plain-language check](#plain-language-check)).
+</ParamField>
+
+<ParamField body="version" type="string" required>
+  Your own version label. Zend numbers uploads separately (`v1`, `v2`, …).
+</ParamField>
+
+<ParamField body="origins" type="string[]" required>
+  1–5 origins in the form `https://host[:port]`. No path, query or fragment, and not on `usezend.app`. Pages outside these origins open in the browser instead of inside Zend.
+</ParamField>
+
+<ParamField body="entry" type="string" default="/">
+  Path Zend opens by default. Must start with `/`.
+</ParamField>
+
+<ParamField body="visibility" type='"private" | "public"' default="private">
+  `public` sends the app to review. See [Public apps](/ship/public-apps).
+</ParamField>
+
+<ParamField body="permissions" type="string[]" default="[]">
+  What your app may ask for. See [Permissions](#permissions).
+</ParamField>
+
+<ParamField body="chatActions" type="object[]" default="[]">
+  Entries in the chat **Apps** tray. See [chatActions](#chatactions).
+</ParamField>
+
+<ParamField body="cardTypes" type="string[]" default="[]">
+  Card templates you post: `result`, `invite`, `status`. Needs `post_card`.
+</ParamField>
+
+<ParamField body="interactionTypes" type="object" default="{}">
+  Map of interaction type name to its state machine. See [interactionTypes](#interactiontypes).
+</ParamField>
+
+<ParamField body="custody" type='"contract" | "creator"' default="contract">
+  Where group, event and prize money sits before payout. Public apps must use `contract`. See [Custody](/concepts#custody).
+</ParamField>
+
+<ParamField body="webhook" type="string">
+  `https` URL that receives [webhooks](/reference/webhooks).
+</ParamField>
+
+<ParamField body="limits" type="object">
+  Only `cardsPerUserPerDay` is supported. It can lower your tier's cap, not raise it.
+</ParamField>
+
+<ParamField body="description" type="string">
+  One line for Discover, up to 140 characters, plain language. Required for public apps.
+</ParamField>
+
+<ParamField body="category" type="string">
+  Discover section: `games`, `friends`, `events`, `community` or `tools`.
+</ParamField>
+
+<ParamField body="developer" type="object">
+  `{ name, support, privacy }`. Required for public apps. `support` is an email or `https` URL; `privacy` is an `https` URL.
+</ParamField>
+
+<ParamField body="results" type='"none" | "app" | "checked"' default="none">
+  How results are decided, shown on your listing. Must be `app` or `checked` if you use `prize`. See [Public apps](/ship/public-apps#results).
+</ParamField>
+
+<ParamField body="resolverKey" type="string">
+  32-byte hex Ed25519 public key that signs prize results. Required with the `prize` permission. Generate one with [`zend apps resolver-key`](/cli/apps#resolver-key).
+</ParamField>
+
+<ParamField body="adapters" type="string[]">
+  Reserved. Must be empty.
+</ParamField>
+
+## Permissions
+
+| Permission | Unlocks | User consent |
+|---|---|---|
+| `post_card` | [`postCard`](/guides/cards) | "Post to your feed and chats" toggle |
+| `pay` | [`pay`](/money/pay) | Each payment |
+| `request_payment` | [`request`](/money/requests-and-links) | Each request |
+| `create_link` | [`createLink`](/money/requests-and-links) | Each link |
+| `prize` | [`prize.*`](/money/prizes) | Each prize |
+| `attest` | [`attest`](/fairness/attestations) | None |
+| `email` | `email` from [`verifySession`](/guides/identity) | "See your email" toggle |
+| `wallet_address` | `address` from `verifySession` | "Can send money straight to you" toggle |
+| `contacts` | Reserved | "See people you choose to share" toggle |
+| `update_bubble` | Reserved | None |
+
+Consent toggles start off. Users can change them later in **Settings → Connected apps**.
+
+## chatActions
+
+```json
+{ "id": "challenge", "label": "Challenge", "sheet": "/play", "interaction": "challenge" }
+```
+
+| Field | Rules |
+|---|---|
+| `id` | Unique within the manifest |
+| `label` | 1–24 characters, plain language |
+| `sheet` | Path on your first origin, starting with `/` |
+| `interaction` | Optional. A key of `interactionTypes` |
+
+When `interaction` is set, Zend creates that interaction with the other person in the chat and opens `sheet?interaction=<id>`.
+
+## interactionTypes
+
+```json
+"challenge": {
+  "states": ["sent", "accepted", "resolved", "expired"],
+  "initial": "sent",
+  "transitions": {
+    "sent": ["accepted", "expired"],
+    "accepted": [{ "to": "resolved", "serverOnly": true }, "expired"]
+  },
+  "terminal": ["resolved", "expired"]
+}
+```
+
+- 1–12 unique states. `initial` and every `terminal` state must be in `states`.
+- At least one terminal state. Terminal states can't have transitions.
+- Transitions reference known states only, and each move can be listed once.
+- A transition is either a state name, which any participant may make, or `{ "to": "<state>", "serverOnly": true }`, which only your server may make with your app key. A page that tries it gets `TRANSITION_SERVER_ONLY`.
+- If you declare a state named `expired`, Zend moves unfinished interactions there at their deadline.
+
+<Tip>
+Use `serverOnly` for any move a player could fake by editing the page, such as declaring a winner. `zend apps check` lists every server-only move and catches a misspelt `serverOnly`, which would otherwise leave the move open to every player.
+</Tip>
+
+## Plain-language check
+
+`name`, chat action labels, `description`, `developer.name` and card text can't contain these words: sui, blockchain, chain, crypto, token, usdc, stablecoin, gas, wallet, escrow, contract, zklogin, seed. Your users shouldn't need to know how money moves. See the [copy guide](/ship/copy-guide).
+
+## Check before you deploy
+
+```bash
+zend apps check zapp.json
+```
+
+`check` runs the interaction-rule checks locally without uploading. `deploy` runs the same checks first. The server validates everything else on upload.

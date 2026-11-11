@@ -1,0 +1,55 @@
+---
+title: "Live rooms"
+description: "Realtime messages and presence for everyone in an interaction, with no server of your own."
+---
+
+A live room connects everyone in an interaction. Zend checks membership, stamps each message with the sender, and fans it out. Nothing is stored, so use the interaction itself for anything you need to keep.
+
+```ts
+const room = await zend.live.join(game.id);
+
+room.on("presence", (members) => showWhoIsHere(members));
+room.on("message", ({ from, data, at }) => applyMove(from, data));
+room.on("status", (s) => setBanner(s)); // "connected" | "reconnecting" | "disconnected"
+room.on("closed", (reason) => endGame(reason));
+
+await room.send({ move: "A3" });
+
+// later
+await room.leave();
+```
+
+Each `on` call returns a function that removes the handler.
+
+## Rules
+
+- Only participants of the interaction can join.
+- `from` is the sender's `appUserId`, set by Zend. A page can't fake it.
+- Messages from your server arrive with `from: "app"`. Results of [random draws](/fairness/random-draws) arrive with `from: "zend"` and `data: { type: "random", result }`.
+- Messages are up to 8 KB. Each person can send 20 a second, and each room carries up to 200 a second.
+- The room closes when the interaction reaches a terminal state. Handlers get `closed` with a reason.
+
+## From your server
+
+Your server can join the same room over WebSocket with your app key, for example to referee a game.
+
+```text
+wss://api.usezend.app/api/zend/v2/apps/server/live/<interaction_id>/ws
+Authorization: Bearer zapp_sk_...
+```
+
+Send:
+
+```json
+{ "type": "send", "data": { "turn": "danny" } }
+```
+
+Receive:
+
+```json
+{ "type": "live_message", "interaction_id": "int_...", "from": "zu_...", "data": { "move": "A3" }, "at": "2026-11-02T10:00:00Z" }
+{ "type": "live_presence", "interaction_id": "int_...", "members": [ ... ] }
+{ "type": "live_closed", "interaction_id": "int_...", "reason": "..." }
+```
+
+Your server can only join rooms for its own app's interactions.

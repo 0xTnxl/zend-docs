@@ -1,0 +1,89 @@
+---
+title: "Webhooks"
+description: "Events Zend sends to your server, how to verify them, and how delivery works."
+---
+
+Set `webhook` in your [manifest](/guides/manifest) to an `https` URL. Zend POSTs JSON to it:
+
+```json
+{
+  "id": "6f1c…",
+  "type": "payment.completed",
+  "created_at": "2026-11-02T10:00:00Z",
+  "data": { }
+}
+```
+
+Headers:
+
+| Header | Value |
+|---|---|
+| `x-zend-signature` | `t=<unix seconds>,v1=<hex>` |
+| `x-zend-event-id` | The event `id` |
+
+## Events
+
+| Type | `data` |
+|---|---|
+| `interaction.created` | The interaction |
+| `interaction.updated` | The interaction after the change |
+| `payment.completed` | `{ payment_id \| ask_link_id, from, to, amount_usd, price_ngn, ngn_per_usd, rate_id, reference }`. Split payments add `parts` |
+| `link.claimed` | `{ link_id, by, amount_usd, reference }` |
+| `random.drawn` | The draw result |
+| `prize.created` | The prize |
+| `prize.joined` | `{ prize_id, by }` |
+| `prize.resolved` | `{ prize, digest }` |
+| `prize.paid` | `{ prize, reason, digest }` |
+| `prize.refunded` | `{ prize, reason, digest }`. `reason` is `vetoed` or `no_result` |
+
+`from`, `to` and `by` are `appUserId`s. `by` on `link.claimed` is `null` if the collector has never connected your app. `price_ngn`, `ngn_per_usd` and `rate_id` are `null` unless the payment was priced in Naira.
+
+## Verify signatures
+
+`v1 = hex(HMAC-SHA256(webhook_secret, "<t>.<raw body>"))`. Use the raw request body, before JSON parsing.
+
+<CodeGroup>
+```ts Express
+import express from "express";
+import { verifyWebhook } from "@zendfi/appkit/server";
+
+app.post("/zend/webhook", express.text({ type: "*/*" }), (req, res) => {
+  if (!verifyWebhook(req.body, req.header("x-zend-signature") ?? "", process.env.ZEND_WEBHOOK_SECRET!)) {
+    return res.sendStatus(401);
+  }
+  const event = JSON.parse(req.body);
+  // dedupe on event.id, then handle
+  res.sendStatus(200);
+});
+```
+
+```ts Any runtime
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verify(rawBody: string, header: string, secret: string): boolean {
+  const parts = Object.fromEntries(header.split(",").map((kv) => kv.split("=")));
+  const t = Number(parts.t);
+  if (!parts.v1 || Math.abs(Date.now() / 1000 - t) > 300) return false;
+  const expected = createHmac("sha256", secret).update(`${t}.${rawBody}`).digest();
+  const given = Buffer.from(parts.v1, "hex");
+  return expected.length === given.length && timingSafeEqual(expected, given);
+}
+```
+</CodeGroup>
+
+`verifyWebhook` rejects signatures older than 5 minutes. Rotate the secret with [`zend apps rotate-key --webhook-secret`](/cli/apps#rotate-key).
+
+## Delivery
+
+- Any `2xx` response is success. Anything else, or no response within 10 seconds, is retried.
+- Retries back off from 30 seconds, doubling, for up to 12 attempts (about a day), then stop.
+- Events can arrive more than once and out of order. Dedupe on `id`, and use the interaction's `version` to ignore stale updates.
+
+## Catch up
+
+```bash
+curl https://api.usezend.app/api/zend/v2/apps/server/events \
+  -H "Authorization: Bearer $ZEND_APP_KEY"
+```
+
+Returns the last 100 events with `delivered_at`, so you can replay what you missed.

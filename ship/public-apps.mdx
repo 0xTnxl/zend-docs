@@ -1,0 +1,79 @@
+---
+title: "Public apps"
+description: "Get listed on Discover: prove your origins, add listing details, pass review."
+---
+
+Private apps are shared by link and aren't reviewed. Public apps are listed on Discover, reach people who don't know you, get the `public` [tier](/ship/limits), and lose the "Not checked by Zend" label.
+
+## Prove you own your origins
+
+Serve this file at every origin in your manifest:
+
+```json https://your-app.example.com/.well-known/zend-app.json
+{ "app": "<your slug>" }
+```
+
+## Add listing details
+
+```json zapp.json
+{
+  "visibility": "public",
+  "custody": "contract",
+  "description": "Flip a coin with a friend in your chat. Winner gets bragging rights.",
+  "category": "games",
+  "developer": {
+    "name": "mhetLabs",
+    "support": "help@example.com",
+    "privacy": "https://your-app.example.com/privacy"
+  },
+  "results": "app"
+}
+```
+
+Public apps must use `custody: "contract"` and need `description` and `developer`.
+
+### results
+
+| `results` | Shown to users | Use when |
+|---|---|---|
+| `none` | Nothing | No winners or rankings |
+| `app` | "Results decided by {app}" | Your server decides |
+| `checked` | "Checked afterwards so nobody can cheat" | You publish commit-reveal with [`zend.attest`](/fairness/attestations) |
+
+Apps with the `prize` permission must set `results` to `app` or `checked`, and set a `resolverKey`.
+
+## Review
+
+Deploying with `visibility: "public"` puts the app `in_review`:
+
+```bash
+zend apps deploy zapp.json
+zend apps review <slug>
+```
+
+<Steps>
+  <Step title="Automated checks (about a minute)">
+    Zend checks the origin ownership file, that the entry page loads over HTTPS and uses the SDK, and Google Safe Browsing. Failures set the app to `rejected` with findings.
+  </Step>
+  <Step title="Zend approval">
+    A Zend admin approves apps that pass. Approved apps become `listed` and move to the `public` tier.
+  </Step>
+</Steps>
+
+You can also follow progress in **Settings → Developer** in the Zend app.
+
+## After listing
+
+- Changes to name, icon or copy keep the listing.
+- Changes to `origins`, `permissions`, `resolverKey`, `custody`, `results` or `visibility` send the app back to review. Until it's approved, the new version is live but unlisted.
+- Users can report your app. Many reports within 24 hours suspend it until Zend reviews it.
+
+## App statuses
+
+| Status | Meaning |
+|---|---|
+| `active` | Live. Private apps sit here |
+| `in_review` | Public listing waiting on checks or approval |
+| `listed` | Public and on Discover |
+| `rejected` | Failed review. See the findings with `zend apps review` |
+| `suspended` | Turned off by Zend. Calls fail with `APP_SUSPENDED` |

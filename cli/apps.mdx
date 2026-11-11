@@ -1,0 +1,136 @@
+---
+title: "zend apps"
+description: "Create, check, deploy and manage ZApps."
+---
+
+All `zend apps` commands use the key saved by [`zend login`](/cli/login). `deploy` can also use `ZEND_APP_KEY` from the environment.
+
+## create
+
+```bash
+zend apps create <slug> "<Name>"
+```
+
+Creates a private ZApp and prints its credentials once:
+
+```text
+Created hello (6b0f…).
+
+Save these now, they won't be shown again:
+  ZEND_APP_KEY=zapp_sk_...
+  ZEND_WEBHOOK_SECRET=...
+
+Next: zend apps deploy zapp.json
+```
+
+Slugs are 2–31 characters of `a-z`, `0-9` and `-`. You can have up to 10 apps.
+
+## list
+
+```bash
+zend apps list
+```
+
+```text
+SLUG                 ID                                    STATUS     VISIBILITY TIER     VERSION
+hello                6b0f…                                 active     private    private  v3
+```
+
+## check
+
+```bash
+zend apps check [zapp.json]
+```
+
+Checks the manifest's interaction rules locally, without uploading. Defaults to `./zapp.json`. It stops on mistakes the server would also refuse:
+
+- Unknown states, and transitions from or to them.
+- An `initial` state that isn't in `states`.
+- Transitions out of a terminal state.
+- A move listed twice.
+- Unknown keys in a transition, with a "did you mean" hint for a misspelt `serverOnly`.
+
+It also lists the moves only your server can make:
+
+```text
+Only your server (with ZEND_APP_KEY) can make these moves:
+  - challenge: accepted → resolved
+zapp.json looks right. The server checks the rest when you deploy.
+```
+
+## deploy
+
+```bash
+zend apps deploy [zapp.json]
+```
+
+Runs `check`, then uploads the manifest as a new version. Defaults to `./zapp.json`. The app is found by the manifest's `app` field.
+
+```text
+Deployed hello v4
+  id:     6b0f…
+  status: active
+  open:   https://app.usezend.app/apps/hello
+```
+
+With `visibility: "public"`, the status becomes `in_review`. Track it with `zend apps review`.
+
+If `ZEND_APP_KEY` is set, `deploy` uses it instead of your login. Use this in CI.
+
+## info
+
+```bash
+zend apps info <slug> [--json]
+```
+
+Shows the app's id, status, visibility, tier, manifest version, this month's [network budget](/ship/limits#network-budget), and the latest review.
+
+## review
+
+```bash
+zend apps review <slug>
+```
+
+Shows the listing status and every review with its findings.
+
+## testers add
+
+```bash
+zend apps testers add <slug> <username>
+```
+
+Lets someone open your private app while you build it. You're always a tester of your own apps.
+
+## payout
+
+```bash
+zend apps payout <slug> <username>
+```
+
+Sets the Zend account that receives your app's share of [split payments](/money/splits).
+
+## rotate-key
+
+```bash
+zend apps rotate-key <slug>                   # API key only
+zend apps rotate-key <slug> --webhook-secret  # webhook secret only
+zend apps rotate-key <slug> --both            # both
+```
+
+The old value stops working immediately. Update your server and CI secrets right away.
+
+## resolver-key
+
+```bash
+zend apps resolver-key
+```
+
+Generates an Ed25519 key for signing [prize](/money/prizes) results, locally:
+
+```text
+Put this in zapp.json:
+  "resolverKey": "3b6a27bc…"
+
+Keep this secret on your server only:
+  ZEND_RESOLVER_SEED=9f1e…
+```

@@ -1,0 +1,38 @@
+---
+title: "Troubleshooting"
+description: "Fixes for common CLI problems."
+---
+
+<AccordionGroup>
+  <Accordion title="Pairing session expired before it was approved.">
+    Sessions expire after 10 minutes. Run `zend login` again and approve it promptly.
+  </Accordion>
+
+  <Accordion title="Not logged in. Run `zend login` first.">
+    Check that `~/.zend/config.json` exists and has an `apiKey`. The file may have been deleted, or the key revoked from another device. Run `zend login` again.
+  </Accordion>
+
+  <Accordion title='No app "<slug>" on your account.'>
+    `deploy` finds the app by the manifest's `app` field. Check it matches a slug in `zend apps list`, or create it with `zend apps create`.
+  </Accordion>
+
+  <Accordion title="INVALID_MANIFEST on deploy">
+    The CLI prints every problem under the error. Fix them all and deploy again. Run `zend apps check` to catch interaction-rule mistakes before uploading. See [Manifest](/guides/manifest).
+  </Accordion>
+
+  <Accordion title="Couldn't reach api.usezend.app">
+    On slow DNS, connection timeouts and resets, the CLI tries up to three times. If it still fails, it's usually DNS on your machine. Check with:
+
+    ```bash
+    getent hosts api.usezend.app
+    ```
+  </Accordion>
+
+  <Accordion title="A webhook shows failed in zend logs tail">
+    Check the response code. Payment request webhooks retry at 1 minute, 5 minutes, 15 minutes, 1 hour and 1 day, then the event is marked `exhausted`. Make sure your endpoint returns `2xx` quickly.
+  </Accordion>
+
+  <Accordion title="I lost my ZEND_APP_KEY or webhook secret">
+    Run `zend apps rotate-key <slug>` (add `--webhook-secret` or `--both` as needed). The old value stops working immediately.
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,43 @@
+---
+title: "Designing for the screen"
+description: "How Zend frames your app on mobile and web, and how to fit in."
+---
+
+Zend opens your app full screen.
+
+<Tabs>
+  <Tab title="Mobile">
+    - A WebView with no URL bar or browser chrome.
+    - Zend shows your icon and name while you load.
+    - The status bar matches your page's `body` background colour.
+    - Zoom and link callouts are off.
+    - One small floating pill (top right, collapses to a dot, draggable) gives the user **Close** and **Report**.
+    - Android back goes back through your pages first.
+  </Tab>
+  <Tab title="Web">
+    - The address bar shows `app.usezend.app/apps/<slug>`.
+    - Your app fills the window under a slim Zend bar.
+    - The browser's back button returns to Zend.
+  </Tab>
+</Tabs>
+
+Unreviewed apps show "Made by {you}. Not checked by Zend." on the loading screen and in the menu.
+
+## Guidelines
+
+- Build for full screen, mobile first. Set a solid `body` background colour.
+- Keep the top-right 120×44 px clear of important controls. The Zend pill sits there until it folds.
+- Don't add your own "back to Zend" button. Call `zend.close()` when you're done; the optional result goes back to whatever opened you.
+- Links to other sites open outside Zend after the user confirms. Keep everything you need on your own origins.
+- Users find you on Discover by name. Use your real app name in `name` and a one-line `description`.
+- Let users report problems with `zend.report({ reason, detail?, interactionId?, prizeId? })`. Reasons: `scam`, `unfair_result`, `offensive`, `broken`, `other`.
+
+## Hosting headers
+
+Zend loads your page in a frame on the web. If you send a `Content-Security-Policy`, allow Zend as a frame ancestor:
+
+```text
+Content-Security-Policy: frame-ancestors https://app.usezend.app
+```
+
+Public apps also serve `/.well-known/zend-app.json` on every origin. See [Public apps](/ship/public-apps#prove-you-own-your-origins).

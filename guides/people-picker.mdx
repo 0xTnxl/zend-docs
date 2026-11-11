@@ -1,0 +1,29 @@
+---
+title: "People picker"
+description: "Let users choose friends with Zend's own picker. Your app only sees who they chose."
+---
+
+`zend.people.pick` opens Zend's friend picker. You get back only the people the user chose, never their friend list.
+
+```ts
+const picked = await zend.people.pick({ title: "Who do you want to play?", max: 3 });
+if (picked.length === 0) return; // the user backed out
+
+const game = await zend.interaction.create({
+  type: "challenge",
+  participants: picked.map((p) => p.pick),
+});
+```
+
+Each result is:
+
+```ts
+{ appUserId: string; name: string; username: string | null; avatar: string | null; pick: string }
+```
+
+Pass `pick` as a participant to `interaction.create`. It works even for people who haven't opened your app yet, which an `@username` or `appUserId` might not.
+
+| Param | Notes |
+|---|---|
+| `title` | Heading on the picker |
+| `max` | Most people the user can choose |

@@ -1,0 +1,62 @@
+---
+title: "Limits and tiers"
+description: "What each app tier allows, and the errors you get past a limit."
+---
+
+Every app has a tier: `private`, `public` or `growth`. New apps start on `private`. Approved public apps move to `public`. Ask Zend for `growth`.
+
+## Tier limits
+
+| Limit | private | public | growth |
+|---|---|---|---|
+| Payment size | $5 | $50 | $100 |
+| Sent through your app per user per day | $20 | $200 | $500 |
+| Money links per day (whole app) | 20 | 500 | 5,000 |
+| Money per link (all uses) | $5 | $50 | $100 |
+| People per link | 5 | 50 | 100 |
+| Cards per user per day | 20 | 50 | 100 |
+| Largest prize | $20 | $100 | $500 |
+
+Zend-wide limits apply on top, for example a $100 cap per money link and per prize while the contracts are new.
+
+| Error | Limit |
+|---|---|
+| `APP_LIMIT_AMOUNT` | Payment or link size |
+| `APP_LIMIT_DAILY` | Daily spend per user, or links per day |
+| `APP_LIMIT_USES` | People per link |
+| `CARD_LIMIT` | Cards per user per day |
+
+You can lower the card cap with `limits.cardsPerUserPerDay` in the manifest. Other limits can't be changed from the manifest.
+
+## Network budget
+
+Zend pays the network cost of your app's money links, prizes, joins and random draws, up to a monthly budget per tier:
+
+| Tier | Monthly budget | About this many collected links |
+|---|---|---|
+| private | 2 SUI | 440 |
+| public | 50 SUI | 11,000 |
+| growth | 500 SUI | 110,000 |
+
+Past the budget, new links, prizes, joins and draws fail with `APP_GAS_BUDGET` until the 1st of the month (UTC). Collecting, taking back, results and payouts always go through. Plain sends and `pay` cost nothing and aren't counted.
+
+Track usage with:
+
+```bash
+zend apps info <slug>
+```
+
+```text
+  network:    0.4210 of 2 SUI this month (21%), resets 2026-12-01
+```
+
+## Other limits
+
+| What | Limit |
+|---|---|
+| Apps per account | 10 (`APP_LIMIT`) |
+| Interaction `data` | 4 KB |
+| Participants per interaction | 50 |
+| Draws per interaction | 50 |
+| Live room messages | 8 KB each, 20 a second per person |
+| Bridge call timeout | 10 minutes (`TIMEOUT`) |

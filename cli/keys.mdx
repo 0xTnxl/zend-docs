@@ -1,0 +1,48 @@
+---
+title: "zend keys"
+description: "Create, list and revoke API keys for your account."
+---
+
+These are account API keys (`zdev_live_...`) for Pay with Zend payment requests. They're separate from ZApp keys (`zapp_sk_...`), which come from [`zend apps create`](/cli/apps#create).
+
+## create
+
+```bash
+zend keys create --scopes create_payment_request,read
+```
+
+```text
+New API key created (shown once — store it securely):
+
+  zdev_live_...
+
+Scopes: create_payment_request, read
+```
+
+`--scopes` takes a comma-separated list. Default: `create_payment_request,read`.
+
+| Scope | Allows |
+|---|---|
+| `create_payment_request` | Creating payment requests |
+| `read` | Reading payment requests and webhook deliveries |
+| `manage_webhook` | Changing your webhook URL |
+
+The key is shown once. You can't create a key with a scope your current key doesn't have, so a narrow key can't grant itself more access.
+
+## list
+
+```bash
+zend keys list
+```
+
+```text
+3f2a…  zdev_live_Ab3x…  [create_payment_request, read]  created 2026-07-06T14:20:11Z
+```
+
+## revoke
+
+```bash
+zend keys revoke <id>
+```
+
+The key stops working immediately.

@@ -1,0 +1,17 @@
+---
+title: "zend config"
+description: "Set and read your account's webhook URL."
+---
+
+```bash
+zend config set webhookUrl https://yourapp.com/webhooks/zend
+zend config get webhookUrl
+```
+
+`set` updates your account's webhook URL for payment request events and saves it to `~/.zend/config.json`. Payment requests can still override it one at a time. `get` prints the saved value, or `(not set)`.
+
+`webhookUrl` is the only supported key. `set` needs a key with the `manage_webhook` scope.
+
+<Note>
+ZApps don't use this setting. A ZApp's webhook is the `webhook` field in its [manifest](/guides/manifest).
+</Note>

@@ -1,0 +1,48 @@
+---
+title: "Money overview"
+description: "How ZApps ask for money, and what Zend does before any of it moves."
+---
+
+Your app never touches balances, keys or payment screens. It asks; Zend shows its own confirm sheet with your app's name, the amount, the recipient, and where the money goes; the user decides.
+
+## Actions
+
+|  | [`pay`](/money/pay) | [`request`](/money/requests-and-links#ask-links) | [`createLink`](/money/requests-and-links#money-links) | [`prize.create`](/money/prizes) |
+|---|---|---|---|---|
+| Direction | User → a Zend user | Anyone → the user | User → whoever opens the link | Host → winners your server picks |
+| Permission | `pay` | `request_payment` | `create_link` | `prize` |
+| You get back | `paymentId` | `id`, `url` | `id` (Zend shares the link) | The prize |
+| Webhook | `payment.completed` | `payment.completed` per payer | `link.claimed` per collector | `prize.*` |
+| Minimum | $0.01 | $0.01 | $1 per person | $1 |
+
+## Amounts
+
+Every money call takes either `amount` in US dollars or `price: { ngn }` in Naira:
+
+```ts
+await zend.pay({ to: "@ada", amount: 1.5 });
+await zend.pay({ to: "@ada", price: { ngn: 2000 } });
+```
+
+With `price`, Zend converts at its current rate and shows ₦ on its sheet. Webhooks carry `amount_usd`, plus `price_ngn` and the rate used when you priced in Naira. Users see amounts in Naira by default.
+
+An ask link priced in Naira asks for that many Naira each time someone pays it. Money links and prizes are converted once, when they're made.
+
+## reference
+
+Pass `reference` (up to 64 characters), such as your order or game ID. It comes back on every webhook for that money action, and you can look payments up by it from your server.
+
+## Rules Zend enforces
+
+- Your app's [tier limits](/ship/limits): payment size, daily spend per user, links per day, link size.
+- Zend-wide limits on links and prizes.
+- Only one money sheet at a time. A second call while one is open rejects with `BUSY`.
+- `USER_CANCELLED` means the user tapped Cancel. It's not an error to report.
+
+<Warning>
+Never treat a resolved `pay()` in the browser as proof of payment. Credit orders on the `payment.completed` webhook. See [Verifying payments](/money/verifying-payments).
+</Warning>
+
+## Entry fees and stakes
+
+Player-paid entry fees and stakes are off by platform policy. Host-funded [prizes](/money/prizes) work today.

@@ -1,0 +1,80 @@
+---
+title: "Zend CLI"
+description: "Log in with your phone, create and deploy ZApps, manage API keys and webhooks."
+---
+
+The `zend` CLI uses your own Zend account. There's no separate developer account: apps you create belong to you, and anything that settles goes to the same account you use in the Zend app.
+
+## Install
+
+<CodeGroup>
+```bash npm
+npm install -g pay-with-zend-cli
+```
+
+```bash npx
+npx pay-with-zend-cli login
+```
+</CodeGroup>
+
+Requires Node.js 18 or later. The installed command is `zend`.
+
+```bash
+zend --version
+zend --help
+```
+
+## Log in
+
+```bash
+zend login
+```
+
+Approve the login on your phone. See [Log in](/cli/login).
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| [`zend login`](/cli/login) | Pair the CLI with your Zend account |
+| [`zend apps`](/cli/apps) | Create, check, deploy and manage ZApps |
+| [`zend keys`](/cli/keys) | Create, list and revoke API keys |
+| [`zend config`](/cli/config) | Set your account's webhook URL |
+| [`zend payments test`](/cli/payments) | Check a payment request without creating it |
+| [`zend logs tail`](/cli/logs) | Show recent webhook deliveries |
+
+## Configuration file
+
+Every command except `login` reads `~/.zend/config.json`:
+
+```json ~/.zend/config.json
+{
+  "apiKey": "zdev_live_...",
+  "webhookUrl": "https://yourapp.com/webhooks/zend",
+  "baseUrl": "https://api.usezend.app"
+}
+```
+
+| Key | Notes |
+|---|---|
+| `apiKey` | Saved by `zend login` |
+| `webhookUrl` | Saved by `zend config set webhookUrl` |
+| `baseUrl` | Optional. Only for pointing the CLI at a non-production environment |
+
+The file is written with `0600` permissions (owner read and write only). If it's missing or has no `apiKey`, commands stop with "Not logged in. Run `zend login` first."
+
+## In CI
+
+`zend apps deploy` also accepts an app key from the environment, so CI doesn't need your personal login:
+
+```bash
+ZEND_APP_KEY=zapp_sk_... zend apps deploy zapp.json
+```
+
+An app key can only deploy its own app's manifest.
+
+## Security
+
+- `zend login` never asks for a typed key or secret. If a prompt or flag asks for one during login, it isn't the real CLI.
+- Your key is stored in plain text, protected only by file permissions. Don't commit `~/.zend/config.json` or sync it to shared machines.
+- A key can only create keys with scopes it already has. See [`zend keys`](/cli/keys).

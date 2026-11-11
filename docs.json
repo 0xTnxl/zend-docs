@@ -1,72 +1,131 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Zend Developers",
+  "description": "Build ZApps that open inside Zend and use Zend sign-in, payments, money links, interactions and cards.",
   "colors": {
     "primary": "#16A34A",
-    "light": "#07C983",
+    "light": "#22C55E",
     "dark": "#15803D"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://usezend.app"
+  },
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": ["index", "quickstart", "concepts"]
+          },
+          {
+            "group": "Build a ZApp",
+            "pages": [
+              "guides/manifest",
+              "guides/identity",
+              "guides/interactions",
+              "guides/cards",
+              "guides/live-rooms",
+              "guides/people-picker",
+              "guides/screen"
+            ]
+          },
+          {
+            "group": "Money",
+            "pages": [
+              "money/overview",
+              "money/pay",
+              "money/requests-and-links",
+              "money/splits",
+              "money/allowance",
+              "money/prizes",
+              "money/verifying-payments"
+            ]
+          },
+          {
+            "group": "Fair results",
+            "pages": ["fairness/random-draws", "fairness/attestations"]
+          },
+          {
+            "group": "Ship",
+            "pages": ["ship/public-apps", "ship/limits", "ship/copy-guide"]
+          },
+          {
+            "group": "Examples",
+            "pages": ["examples/coinflip"]
+          }
+        ]
+      },
+      {
+        "tab": "SDK reference",
+        "groups": [
+          {
+            "group": "@zendfi/appkit",
+            "pages": ["reference/client-sdk", "reference/server-sdk"]
+          },
+          {
+            "group": "HTTP",
+            "pages": ["reference/rest-api", "reference/webhooks", "reference/errors"]
+          }
+        ]
+      },
+      {
+        "tab": "CLI",
+        "groups": [
+          {
+            "group": "Zend CLI",
+            "pages": ["cli/overview", "cli/login"]
+          },
+          {
+            "group": "Commands",
+            "pages": ["cli/apps", "cli/keys", "cli/config", "cli/payments", "cli/logs"]
+          },
+          {
+            "group": "Help",
+            "pages": ["cli/troubleshooting"]
+          }
         ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "Example ZApps",
+          "href": "https://zapps-examples.pages.dev/coinflip/",
+          "icon": "gamepad"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "npm",
+          "href": "https://www.npmjs.com/package/@zendfi/appkit",
+          "icon": "npm"
         }
       ]
     }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
   },
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:support@mintlify.com"
+        "href": "mailto:support@usezend.app"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Open Zend",
+      "href": "https://app.usezend.app"
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/zendfi"
     }
   }
 }

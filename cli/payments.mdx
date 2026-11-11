@@ -1,0 +1,40 @@
+---
+title: "zend payments test"
+description: "Check a payment request against the real API without creating it."
+---
+
+```bash
+zend payments test \
+  --amount 25.00 \
+  --description "Order #1024" \
+  --expires-in-minutes 15 \
+  --redirect-url https://yourapp.com/checkout/return \
+  --webhook-url https://yourapp.com/webhooks/zend
+```
+
+Runs the same checks a live payment request runs, against your own account, but creates nothing, moves no money, and sends no webhook. If it passes, the live request will too.
+
+```text
+Sandbox Mode: this request is valid and WOULD be created. No real funds move.
+No live Developer Webhook Event will be delivered for this dry run.
+
+{
+  "sandbox": true,
+  "valid": true,
+  "amount": 25,
+  "description": "Order #1024",
+  "expiresInMinutes": 15,
+  "redirectUrl": "https://yourapp.com/checkout/return",
+  "webhookUrl": "https://yourapp.com/webhooks/zend"
+}
+```
+
+| Option | Default | Notes |
+|---|---|---|
+| `--amount <amount>` | `10.00` | US dollars |
+| `--description <text>` | | |
+| `--expires-in-minutes <minutes>` | `15` | 1–60 |
+| `--redirect-url <url>` | | `https` |
+| `--webhook-url <url>` | Your account's URL | `https`. Overrides it for this request |
+
+Needs a logged-in key with `create_payment_request`.

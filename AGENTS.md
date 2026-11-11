@@ -1,37 +1,38 @@
-> **First-time setup**: Customize this file for your project. Prompt the user to customize this file for their project.
-> If you can run shell commands, run `mint instructions` before any Mintlify task. It prints current guidance for this CLI version. Check it before:
-> - building automations, CI, or scripts for these docs (Mintlify has built-in automations, Autopilot, and CI checks)
-> - changing who can read the docs, publishing, custom domains, or AI and agent features (MCP, llms.txt, skill.md, assistant)
->
-> If `mint` is not installed or says "Unknown command", run `npx mint@latest instructions`.
-> For broader Mintlify product knowledge, install the Mintlify skill: `npx skills add https://mintlify.com/docs`
+> If you can run shell commands, run `mint instructions` before any Mintlify task. If `mint` is not installed, run `npx mint@latest instructions`.
 
-# Documentation project instructions
+# Zend developer docs
 
 ## About this project
+- Mintlify site for developers building on Zend. Pages are MDX with YAML frontmatter; config is `docs.json`.
+- Sources of truth:
+  - ZApp SDK (`@zendfi/appkit`): the `zend-appkit` repo, `src/index.ts`, `src/server.ts` and `docs/`.
+  - CLI (`pay-with-zend-cli`, command `zend`): the `zend-cli` repo, `src/commands/`.
+  - API behaviour: the Zend backend (`src/app_*.rs`, `src/app_manifest.rs`, routes in `src/main.rs`).
+- When the SDK or CLI changes, update the matching page here in the same change.
 
-- This is a documentation site built on [Mintlify](https://mintlify.com)
-- Pages are MDX files with YAML frontmatter
-- Configuration lives in `docs.json`
-- Use the Mintlify MCP server, `https://mcp.mintlify.com`, to edit content and settings via MCP
-- Use the Mintlify docs MCP server, `https://www.mintlify.com/docs/mcp`, to query information about using Mintlify via MCP
+## Layout
+- `index`, `quickstart`, `concepts`: get started.
+- `guides/`: building a ZApp (manifest, identity, interactions, cards, live rooms, picker, screen).
+- `money/`: pay, links, splits, allowance, prizes, verifying payments.
+- `fairness/`: random draws and attestations.
+- `ship/`: public apps, limits, copy guide.
+- `reference/`: client SDK, server SDK, REST API, webhooks, errors.
+- `cli/`: one page per command group.
 
 ## Terminology
-
-{/* Add product-specific terms and preferred usage */}
-{/* Example: Use "workspace" not "project", "member" not "user" */}
+- "ZApp" for an app built on Zend. "Zend" for the product, never "ZendFi" in reader-facing text.
+- "money link" (not escrow link or give link), "ask link" for `request`, "collect" (not claim), "take back" (not reclaim).
+- "app key" for `zapp_sk_...`; "API key" for account keys from `zend keys` (`zdev_live_...`).
+- `appUserId` / `app_user_id` (`zu_...`) for the per-user id apps see.
+- Package names: `@zendfi/appkit` and `@zendfi/appkit/server`; CLI package `pay-with-zend-cli`, command `zend`.
 
 ## Style preferences
-
-{/* Add any project-specific style rules below */}
-
-- Use active voice and second person ("you")
-- Keep sentences concise — one idea per sentence
-- Use sentence case for headings
-- Bold for UI elements: Click **Settings**
-- Code formatting for file names, commands, paths, and code references
+- Active voice, second person ("you"), one idea per sentence.
+- Sentence case for headings.
+- Bold for UI elements: tap **Approve**.
+- Code formatting for file names, commands, paths, fields and error codes.
+- These docs are for developers, so technical terms are fine. Copy that we tell developers to show their users must follow `ship/copy-guide.mdx`.
 
 ## Content boundaries
-
-{/* Define what should and shouldn't be documented */}
-{/* Example: Don't document internal admin features */}
+- Don't document endpoints the Zend client calls on the page's behalf (`/apps/by-slug/*`, `/apps/cards`, …) beyond listing them as internal.
+- Don't document admin review endpoints or internal environment settings.

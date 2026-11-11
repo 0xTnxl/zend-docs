@@ -1,0 +1,53 @@
+---
+title: "zend login"
+description: "Pair the CLI with your Zend account by approving it on your phone."
+---
+
+```bash
+zend login
+```
+
+This is the only way to authenticate. No flag or prompt accepts a typed API key.
+
+<Steps>
+  <Step title="The CLI starts a pairing session">
+    It prints an approval link and a QR code.
+  </Step>
+  <Step title="Open it on your phone">
+    The link opens in the Zend app, on an approval screen that names this CLI (`zend-cli on <hostname>`).
+  </Step>
+  <Step title="Approve">
+    Tap **Approve** and confirm it's you.
+  </Step>
+  <Step title="The CLI saves its key">
+    The CLI notices the approval, fetches its API key, and saves it to `~/.zend/config.json` with `0600` permissions.
+  </Step>
+</Steps>
+
+```text
+$ zend login
+
+Approve this login in the Zend App:
+
+  https://zdfi.me/cli-auth/aB3xK9mP2qR7sT1vW4yZ0
+
+  █▀▀▀▀▀█ ▀ █▀█ █▀▀▀▀▀█
+  █ ███ █ ▄▄▄▄▄ █ ███ █
+  █ ▀▀▀ █ █▄█▀▀ █ ▀▀▀ █
+  ▀▀▀▀▀▀▀ ▀▀▀▀▀ ▀▀▀▀▀▀▀
+
+Waiting for approval (expires at 2026-07-06T14:32:00Z)...
+....
+Logged in! Your API key has been saved to ~/.zend/config.json.
+```
+
+## When it doesn't finish
+
+| Output | Meaning |
+|---|---|
+| `Login was denied in the Zend App.` | You tapped deny. Nothing was saved |
+| `Pairing session expired before it was approved.` | Sessions last 10 minutes. Run `zend login` again |
+
+## Log out
+
+Delete `~/.zend/config.json`, and revoke the key from another session with [`zend keys revoke`](/cli/keys#revoke).

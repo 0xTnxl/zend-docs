@@ -1,0 +1,104 @@
+---
+title: "Server SDK"
+description: "ZendServer and helpers from @zendfi/appkit/server for Node 18+."
+---
+
+```ts
+import { ZendServer, verifyWebhook, verifyAttestation } from "@zendfi/appkit/server";
+
+const zend = new ZendServer(process.env.ZEND_APP_KEY!);
+```
+
+<Warning>
+Your app key (`zapp_sk_...`) is a server secret. Never send it to a browser or put it in your page bundle.
+</Warning>
+
+## new ZendServer(apiKey, baseUrl?)
+
+<ParamField body="apiKey" type="string" required>
+  Your app key, from `zend apps create` or `zend apps rotate-key`.
+</ParamField>
+
+<ParamField body="baseUrl" type="string" default="https://api.usezend.app">
+  API host. Change it only for a non-production environment.
+</ParamField>
+
+Failed calls throw an `Error` with `code` (Zend's error code) and `status` (HTTP status).
+
+## verifySession(appSession)
+
+Exchange the `appSession` from `zend.identity.get()` for the verified user.
+
+```ts
+const user = await zend.verifySession(appSession);
+// { app_user_id, username, name, avatar, scopes, email?, address? }
+```
+
+See [Sign in with Zend](/guides/identity).
+
+## createInteraction(params)
+
+Create an interaction on behalf of a user who has connected your app.
+
+```ts
+await zend.createInteraction({
+  type: "challenge",
+  created_by: "@tunde",          // or zu_...
+  participants: ["@danny"],
+  data: { round: 1 },
+  visibility: "participants",
+  expires_in_secs: 3600,
+});
+```
+
+## getInteraction(id)
+
+```ts
+const it = await zend.getInteraction("int_...");
+```
+
+## updateInteraction(id, params)
+
+Move an interaction along. Your server can make `serverOnly` moves that pages can't.
+
+```ts
+await zend.updateInteraction(id, {
+  state: "resolved",
+  data: { winner: "zu_..." },
+  idempotency_key: `${id}:resolve`,
+  expected_version: 3,
+});
+```
+
+## getPrize(id)
+
+The prize and every joined player's `address` and `app_user_id`.
+
+## resolvePrize(id, winners, amountsUsd, resolverSeedHex, correction?)
+
+Signs the result with your resolver key and posts it.
+
+| Param | Notes |
+|---|---|
+| `winners` | Player addresses from `getPrize().players` |
+| `amountsUsd` | One amount per winner, in US dollars |
+| `resolverSeedHex` | Your `ZEND_RESOLVER_SEED` |
+| `correction` | `true` to correct a result once, during the dispute window |
+
+Payout happens after the dispute window unless the host cancels. See [Prizes](/money/prizes).
+
+## verifyWebhook(rawBody, header, secret, toleranceSecs?)
+
+Returns `true` when `x-zend-signature` matches the raw body and is no older than `toleranceSecs` (default 300). Pass the raw body, before JSON parsing. See [Webhooks](/reference/webhooks#verify-signatures).
+
+## verifyAttestation(receipt, zendPublicKeyHex)
+
+Returns `true` when an attestation receipt's hash and Zend's signature are valid. Get the key from `GET /apps/attest/key`. See [Attestations](/fairness/attestations).
+
+## resolverKeyFromSeed(seedHex)
+
+Returns `{ privateKey, publicKeyHex }` for a 32-byte hex seed. `publicKeyHex` is the value for `resolverKey` in your manifest. `zend apps resolver-key` does this for you.
+
+## prizeResultMessage(prizeId, winners, amounts, correction?)
+
+The exact bytes your resolver key signs, matching `zend::prize::result_message`. `resolvePrize` uses it; you only need it if you sign results somewhere else.

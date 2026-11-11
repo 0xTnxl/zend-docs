@@ -1,0 +1,107 @@
+---
+title: "Coin Flip"
+description: "A complete chat ZApp: chat action, interaction, fair draw, result card, play again."
+---
+
+Coin Flip lets two people in a DM flip a coin. It uses a chat action, an interaction, a [random draw](/fairness/random-draws), and a result card with a **Flip again** button.
+
+<CardGroup cols={2}>
+  <Card title="Try it" icon="play" href="https://zapps-examples.pages.dev/coinflip/">
+    Open a chat in Zend, tap **+ → Apps → Flip**.
+  </Card>
+  <Card title="Source" icon="github" href="https://github.com/zendfi/zend-appkit/tree/main/examples/coinflip">
+    `examples/coinflip` in the AppKit repo.
+  </Card>
+</CardGroup>
+
+## Manifest
+
+```json zapp.json
+{
+  "app": "coinflip",
+  "name": "Coin Flip",
+  "version": "0.2.0",
+  "origins": ["https://zapps-examples.pages.dev"],
+  "entry": "/coinflip/",
+  "permissions": ["post_card"],
+  "cardTypes": ["result"],
+  "chatActions": [
+    { "id": "flip", "label": "Flip", "sheet": "/coinflip/", "interaction": "flip" }
+  ],
+  "interactionTypes": {
+    "flip": {
+      "states": ["sent", "resolved", "expired"],
+      "initial": "sent",
+      "transitions": { "sent": ["resolved", "expired"] },
+      "terminal": ["resolved", "expired"]
+    }
+  },
+  "visibility": "public",
+  "custody": "contract",
+  "results": "app",
+  "developer": { "name": "Zend", "support": "support@usezend.app", "privacy": "https://usezend.app/privacy" },
+  "description": "Flip a coin with a friend in your chat. Winner gets bragging rights.",
+  "category": "games"
+}
+```
+
+Tapping **Flip** in a chat creates a `flip` interaction with both people and opens `/coinflip/?interaction=<id>`.
+
+## Page
+
+```ts
+import { init } from "@zendfi/appkit";
+
+const zend = init();
+const me = await zend.identity.get();
+let id = zend.launch.interaction;
+
+// "Flip again" on a result card: start a new flip with the same people.
+if (!id && zend.launch.start === "flip" && zend.launch.from) {
+  const prev = await zend.interaction.get(zend.launch.from);
+  const others = prev.participants
+    .filter((p) => p.appUserId !== me.appUserId)
+    .map((p) => p.appUserId);
+  id = (await zend.interaction.create({ type: "flip", participants: others })).id;
+}
+
+async function flip() {
+  const i = await zend.interaction.get(id);
+  // Same order on both phones, so a draw of 0 or 1 names the same person for everyone.
+  const people = [...i.participants].sort((a, b) => a.appUserId.localeCompare(b.appUserId));
+
+  // Drawn by Zend and recorded once for this flip. Nobody can flip again until they like it.
+  const r = await zend.random({ interactionId: id, label: "flip", kind: "int", n: 2 });
+  const winner = people[r.value[0]].name;
+
+  await zend.interaction.update(id, {
+    state: "resolved",
+    data: { winner, draw: { label: r.label, transactionId: r.transactionId } },
+    idempotencyKey: `${id}:end`,
+  });
+
+  await zend.postCard({
+    interactionId: id,
+    template: "result",
+    placement: "chat",
+    idempotencyKey: `${id}:card`,
+    slots: {
+      title: `${winner} won the coin flip`,
+      emoji: "🪙",
+      check: true, // Zend shows "Result checked ✓" because the result came from a recorded draw
+      buttons: [{ label: "Flip again", action: "start_interaction", type: "flip" }],
+    },
+  });
+
+  setTimeout(() => zend.close({ winner }), 1500);
+}
+```
+
+## What to notice
+
+- **No server.** Both players can call `zend.random` with the same label; the second call gets the recorded result, so neither page can reroll.
+- **Idempotency keys** like `${id}:end` make retries safe if a call times out.
+- **`INTERACTION_FINISHED`** means the flip is already resolved. The example tells the user to tap **Flip again** on the card.
+- **Plain copy.** Errors show "That didn't go through. Try again." rather than the SDK's `message`.
+
+A game with money would move `resolved` to a `serverOnly` transition and let a server decide the winner. See [Interactions](/guides/interactions#who-can-update).

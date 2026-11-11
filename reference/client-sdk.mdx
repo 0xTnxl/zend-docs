@@ -1,0 +1,241 @@
+---
+title: "Client SDK"
+description: "Every method on init() from @zendfi/appkit."
+---
+
+```bash
+npm install @zendfi/appkit
+```
+
+```ts
+import { init, ZendError } from "@zendfi/appkit";
+
+const zend = init();
+```
+
+Every method returns a promise and rejects with `ZendError { code, message }`. Calls time out after 10 minutes, because money sheets can stay open while the user decides. See [Errors](/reference/errors).
+
+## init(options?)
+
+<ParamField body="zendOrigins" type="string[]" default='["https://app.usezend.app"]'>
+  Zend web origins allowed to host your page. Add a staging origin while testing.
+</ParamField>
+
+Returns the `zend` object below.
+
+## zend.environment
+
+`"zend-app"` (mobile WebView), `"zend-web"` (frame in `app.usezend.app`), or `"external"` (plain browser). In `external`, every call rejects with `NOT_IN_ZEND`.
+
+## zend.launch
+
+Read from the URL once, on load.
+
+| Field | Set when |
+|---|---|
+| `interaction` | Opened from a chat action, a card button, or an `/i/<id>` link |
+| `start` | A card's `start_interaction` button opened the app; the type to start |
+| `from` | With `start`: the interaction whose card was tapped, to reuse its people |
+
+## Identity
+
+### identity.get()
+
+Returns `{ appUserId, username, name, scopes, appSession }`. See [Sign in with Zend](/guides/identity).
+
+## Money
+
+### pay(params)
+
+Send money to a Zend user. Needs `pay`. See [Take a payment](/money/pay).
+
+```ts
+pay(p: {
+  to: `@${string}`;
+  note?: string;
+  reference?: string;
+  interactionId?: string;
+  splits?: { to: "app" | `@${string}`; percent?: number; amount?: number }[];
+} & ({ amount: number } | { price: { ngn: number } })): Promise<{ paymentId: string; status: string }>
+```
+
+### request(params)
+
+Make an ask link others can pay. Needs `request_payment`. See [Ask links](/money/requests-and-links#ask-links).
+
+```ts
+request(p: {
+  amount?: number;
+  price?: { ngn: number };
+  note?: string;
+  maxPayments?: number;
+  reference?: string;
+}): Promise<{ id: string; url: string }>
+```
+
+### createLink(params)
+
+Make a money link. Zend shares it; you only get its id. Needs `create_link`. See [Money links](/money/requests-and-links#money-links).
+
+```ts
+createLink(p: { uses?: number; note?: string; reference?: string }
+  & ({ amount: number } | { price: { ngn: number } })): Promise<{ id: string; status: string }>
+```
+
+### allowance.request(params?) / allowance.get()
+
+Ask for, or read, a spend allowance. See [Spend allowance](/money/allowance).
+
+```ts
+allowance.request(p?: { perPayment?: { ngn: number }; perDay?: { ngn: number } }): Promise<Allowance | null>
+allowance.get(): Promise<Allowance | null>
+```
+
+### prize.create / join / cancel / get
+
+Host-funded prizes. Needs `prize`. See [Prizes](/money/prizes).
+
+```ts
+prize.create(p: {
+  joinInSecs: number; resolveInSecs: number; maxPlayers: number;
+  disputeSecs?: number; reference?: string; interactionId?: string;
+} & ({ amount: number } | { price: { ngn: number } })): Promise<Prize>
+prize.join(id: string): Promise<Prize>
+prize.cancel(id: string): Promise<Prize>
+prize.get(id: string): Promise<Prize>
+```
+
+## Interactions
+
+See [Interactions](/guides/interactions).
+
+### interaction.create(params)
+
+```ts
+interaction.create(p: {
+  type: string;
+  participants?: string[];      // @username, zu_..., or a pick token
+  data?: Record<string, unknown>;
+  visibility?: "participants" | "friends" | "public";
+  expiresInSecs?: number;
+  reuseOpen?: boolean;
+}): Promise<Interaction>
+```
+
+### interaction.get(id)
+
+```ts
+interaction.get(id: string): Promise<Interaction>
+```
+
+### interaction.update(id, params)
+
+```ts
+interaction.update(id: string, p: {
+  state: string;
+  data?: Record<string, unknown>;
+  idempotencyKey: string;
+  expectedVersion?: number;
+}): Promise<Interaction>
+```
+
+## Cards
+
+### postCard(params)
+
+Needs `post_card` and the user's consent to post. See [Cards](/guides/cards).
+
+```ts
+postCard(p: {
+  interactionId: string;
+  template: "result" | "invite" | "status";
+  placement: "chat" | "feed";
+  idempotencyKey: string;
+  slots: {
+    title: string;
+    subtitle?: string;
+    emoji?: string;
+    media?: string;
+    check?: boolean;
+    buttons?: (
+      | { label: string; action: "open_sheet"; path: string }
+      | { label: string; action: "start_interaction"; type: string }
+      | { label: string; action: "open_url"; url: string }
+    )[];
+  };
+}): Promise<unknown>
+```
+
+## Realtime
+
+### live.join(interactionId)
+
+Join the interaction's live room. See [Live rooms](/guides/live-rooms).
+
+```ts
+live.join(interactionId: string): Promise<LiveRoom>
+
+interface LiveRoom {
+  send(data: unknown): Promise<void>;
+  on(event: "message", fn: (m: { from: string; data: unknown; at: string }) => void): () => void;
+  on(event: "presence", fn: (members: LiveMember[]) => void): () => void;
+  on(event: "closed", fn: (reason: string) => void): () => void;
+  on(event: "status", fn: (status: "connected" | "reconnecting" | "disconnected") => void): () => void;
+  leave(): Promise<void>;
+}
+```
+
+## People
+
+### people.pick(params?)
+
+Open Zend's friend picker. See [People picker](/guides/people-picker).
+
+```ts
+people.pick(p?: { max?: number; title?: string }): Promise<PickedPerson[]>
+```
+
+## Fair results
+
+### random(params)
+
+A draw nobody can rig. See [Random draws](/fairness/random-draws).
+
+```ts
+random(p: { interactionId: string; label: string } & (
+  | { kind: "int"; n: number }
+  | { kind: "shuffle"; n: number }
+  | { kind: "pick"; n: number; k: number }
+)): Promise<RandomResult>
+```
+
+### attest(params)
+
+Record a hash with Zend. Needs `attest`. See [Attestations](/fairness/attestations).
+
+```ts
+attest(p: { label: string; dataHash: string; interactionId?: string }): Promise<AttestReceipt>
+```
+
+## App
+
+### report(params)
+
+Let the user report something in your app to Zend.
+
+```ts
+report(p: {
+  reason: "scam" | "unfair_result" | "offensive" | "broken" | "other";
+  detail?: string;
+  interactionId?: string;
+  prizeId?: string;
+}): Promise<void>
+```
+
+### close(result?)
+
+Close your app. `result` goes back to whatever opened it inside Zend.
+
+```ts
+close(result?: unknown): Promise<void>
+```

@@ -1,0 +1,84 @@
+---
+title: "How ZApps work"
+description: "Identity, interactions, cards, custody, and the trust model behind ZApps."
+---
+
+## The pieces
+
+**Zend identity.** One account per person across Zend and every ZApp. Every app gets the user's `appUserId`, username, name and avatar. Email, wallet address and contacts need the user's consent.
+
+**ZApp.** Your web app, hosted on your own HTTPS origins and registered with a [manifest](/guides/manifest).
+
+**Bridge.** `@zendfi/appkit` talks to Zend with JSON messages. In the mobile app it uses a WebView bridge; on the web it uses `postMessage` to the `app.usezend.app` frame. Zend checks that every message comes from one of your registered origins.
+
+**Interaction.** A stateful object with an ID: a challenge, a round, a booking. Your manifest defines its states and allowed moves; Zend stores it and enforces them. See [Interactions](/guides/interactions).
+
+**Card.** A chat or feed item that Zend draws from a template you fill in. Cards show the live state of their interaction. See [Cards](/guides/cards).
+
+## Who owns what
+
+| Zend | Your ZApp |
+|---|---|
+| Sign-in, consent, profile | Your logic and data |
+| Every money screen, limits, payment records | Text, emoji, image and buttons on cards |
+| Interaction storage and allowed state changes | The state machine itself, in your manifest |
+| Drawing cards and bubbles, posting rules | When to post |
+| Webhook delivery | Handling webhooks |
+
+Rule of thumb: Zend enforces anything that involves money, identity, or what other people see.
+
+## Lifecycle of a chat ZApp
+
+<Steps>
+  <Step title="The user starts it">
+    Tunde taps **+ → Apps → Challenge** in a chat with Danny.
+  </Step>
+  <Step title="Zend creates the interaction">
+    Zend creates a `challenge` interaction with both people and opens your `sheet` path with `?interaction=int_...`.
+  </Step>
+  <Step title="Consent, once">
+    The first time, Zend shows "Continue to Accident as Tunde?".
+  </Step>
+  <Step title="Your page runs">
+    Your page reads `zend.launch.interaction`, runs the game, and calls `zend.interaction.update(...)` and `zend.postCard(...)`.
+  </Step>
+  <Step title="The other person joins">
+    Danny sees a card in the chat. Its button opens your app on the same interaction.
+  </Step>
+  <Step title="Your server follows along">
+    Your server receives `interaction.updated` webhooks and can make moves only it is allowed to make.
+  </Step>
+</Steps>
+
+## Private and public apps
+
+|  | Private (default) | Public |
+|---|---|---|
+| Review | None | Automated checks, then Zend approval |
+| Label | "Made by {you}. Not checked by Zend." | None |
+| Listed on Discover | No | Yes |
+| Limits | `private` tier | `public` tier |
+| Custody | `contract` or `creator` | `contract` only |
+| `public` interaction visibility | Not allowed | Allowed |
+
+Anyone with the link `app.usezend.app/apps/<slug>` can open a private app. See [Public apps](/ship/public-apps).
+
+## Custody
+
+Custody decides where money from groups, events and prizes sits before it's paid out. Set it with `custody` in the manifest.
+
+| Value | Where the money sits | What users see |
+|---|---|---|
+| `contract` (default) | In Zend's on-chain contract until its rules decide who gets it | "Held safely until the rules say who gets it" |
+| `creator` | Goes straight to the person who made the group or event | "Goes straight to {name}. Zend can't get it back." |
+
+## Trust boundaries
+
+<Warning>
+Your page is untrusted from Zend's point of view, and from yours. Anyone can edit it in their browser.
+</Warning>
+
+- Your page can propose money actions. Only the user can approve them, in Zend's sheet.
+- A resolved promise in the browser is not proof of payment. Confirm with the `payment.completed` webhook or the server API. See [Verifying payments](/money/verifying-payments).
+- `appSession` tokens last 10 minutes. Exchange them on your server and start your own session; don't use them as your session.
+- Moves that decide outcomes, such as declaring a winner, belong on your server. Mark them `serverOnly` in the manifest so a page can't make them.

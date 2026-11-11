@@ -1,0 +1,68 @@
+---
+title: "REST API"
+description: "HTTP endpoints for your backend and for app setup."
+---
+
+Base URL: `https://api.usezend.app/api/zend/v2`. Requests and responses are JSON.
+
+## Authentication
+
+| Credential | Header | Used for |
+|---|---|---|
+| App key | `Authorization: Bearer zapp_sk_...` | Your backend. Never send it to browsers |
+| User session | `Authorization: Bearer <Zend session>` | App setup, called as you |
+| None | | Public attestation endpoints |
+
+Most setup is easier with the [CLI](/cli/apps), which calls these endpoints for you.
+
+Errors look like:
+
+```json
+{ "error": "INVALID_TRANSITION", "message": "..." }
+```
+
+`INVALID_MANIFEST` also includes `errors[]`. See [Errors](/reference/errors).
+
+## Your backend (app key)
+
+| Method | Path | Body or query | Returns |
+|---|---|---|---|
+| POST | `/apps/token/verify` | `{ app_session }` | The verified user. See [Sign in with Zend](/guides/identity) |
+| POST | `/apps/server/interactions` | `{ type, created_by, participants?, data?, visibility?, expires_in_secs? }` | The interaction |
+| GET | `/apps/server/interactions/:id` | | The interaction |
+| PATCH | `/apps/server/interactions/:id` | `{ state, data?, idempotency_key, expected_version? }` | The interaction |
+| GET | `/apps/server/payments` | `?reference=` | `{ payments: [...] }`, up to 50, newest first |
+| GET | `/apps/server/events` | | The last 100 webhook events with `delivered_at` |
+| POST | `/apps/server/random` | `{ interaction_id, label, kind, n, k? }` | The draw. See [Random draws](/fairness/random-draws) |
+| GET | `/apps/server/prizes/:id` | | The prize with `players` |
+| POST | `/apps/server/prizes/:id/resolve` | `{ winners, amounts, signature, correction }` | The prize. Use `resolvePrize` from the server SDK |
+| PUT | `/apps/server/manifest` | Manifest JSON | Deploys your own app's manifest. Used by `zend apps deploy` in CI |
+| GET (WebSocket) | `/apps/server/live/:interaction_id/ws` | | A [live room](/guides/live-rooms#from-your-server) connection |
+
+`created_by` is `@username` or `zu_...`, and that user must have connected your app.
+
+## App setup (user session)
+
+| Method | Path | Body | Notes |
+|---|---|---|---|
+| POST | `/apps` | `{ slug, name, icon_url? }` | Returns `api_key` and `webhook_secret` once. Max 10 apps per account |
+| GET | `/apps` | | Your apps |
+| PUT | `/apps/:id/manifest` | Manifest JSON | New version. `public` goes to `in_review` |
+| POST | `/apps/:id/testers` | `{ zendtag }` | The owner is always a tester |
+| POST | `/apps/:id/rotate` | `{ which: "api_key" \| "webhook_secret" \| "both" }` | New values, shown once. Old ones stop working immediately |
+| GET | `/apps/:id/review` | | Review status and findings |
+| PUT | `/apps/:id/payout` | `{ username }` | Where your app's share of split payments goes |
+
+Slugs are 2–31 characters of `a-z`, `0-9` and `-`.
+
+## Public
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/apps/attest/key` | `{ alg, public_key }`, Zend's attestation key |
+| GET | `/apps/attest/interactions/:id` | `{ receipts: [...] }` for an interaction |
+| GET | `/apps/listed` | Listed public apps |
+
+## Endpoints the Zend client uses
+
+`/apps/by-slug/:slug/*`, `/apps/interactions`, `/apps/cards`, `/apps/feed`, `/apps/prizes/*`, `/me/connected-apps` and the live room socket for users are called by the Zend app on your page's behalf. You reach them through the client SDK; don't call them directly.

@@ -1,0 +1,78 @@
+---
+title: "Random draws"
+description: "Coin flips, shuffles and winner picks that nobody can rig, not you and not Zend."
+---
+
+`zend.random` draws a value with Sui's built-in randomness in Zend's `zend::draws` contract, and records it once per interaction and label. Both players' pages can call it; the second call gets the same result.
+
+```ts
+const { value: [side], transactionId } = await zend.random({
+  interactionId: game.id, label: "flip", kind: "int", n: 2,
+});
+
+const deal = await zend.random({ interactionId: game.id, label: "deal-1", kind: "shuffle", n: 52 });
+
+const winners = await zend.random({ interactionId: game.id, label: "winners", kind: "pick", n: 300, k: 3 });
+```
+
+## Kinds
+
+| `kind` | Returns | Range |
+|---|---|---|
+| `int` | One number in `0..n-1` | `n ≥ 2`. A coin flip is `n: 2` |
+| `shuffle` | An order of `0..n-1` | `2 ≤ n ≤ 64` |
+| `pick` | `k` different numbers from `0..n-1` | `1 ≤ k ≤ 64`, `k ≤ n ≤ 1000` |
+
+## Rules
+
+- Each `(interaction, label)` is drawn once, ever. You can't redraw `"flip"` until you like the answer.
+- Asking again with the same label and the same settings returns the recorded result. Asking with different settings fails with `DRAW_MISMATCH`.
+- Labels are 1–25 characters of `a-z`, `0-9`, `_` and `-`.
+- Up to 50 draws per interaction (`TOO_MANY_DRAWS`).
+- Everyone in the interaction's [live room](/guides/live-rooms) also gets the result as a message from `"zend"` with `data: { type: "random", result }`.
+- Draws cost the user nothing. Each one counts against your app's [network budget](/ship/limits#network-budget).
+
+## Result
+
+```ts
+{
+  interactionId: string;
+  label: string;
+  kind: "int" | "shuffle" | "pick";
+  n: number;
+  k: number;
+  value: number[];
+  transactionId: string;              // look it up on Sui
+  attestation: AttestReceipt | null;  // Zend's signed record
+  verify: { package: string; registry: string };
+}
+```
+
+## From your server
+
+```bash
+curl -X POST https://api.usezend.app/api/zend/v2/apps/server/random \
+  -H "Authorization: Bearer $ZEND_APP_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"interaction_id":"int_...","label":"winners","kind":"pick","n":300,"k":3}'
+```
+
+Your server also receives a `random.drawn` webhook for every draw, from a page or from your server.
+
+## Show that a result was checked
+
+Set `check: true` on a `result` card's slots:
+
+```ts
+await zend.postCard({
+  interactionId: game.id, template: "result", placement: "chat", idempotencyKey: `${game.id}:result`,
+  slots: { title: "Heads! Tunde wins", check: true },
+});
+```
+
+Zend shows **Result checked ✓** under the card only when its own check passes: every record for the interaction is intact and signed by Zend, and each draw matches its record. Interactions without a draw get no badge. Tapping the badge explains what was checked.
+
+## Check a draw yourself
+
+- On Sui: look up `transactionId` and find the `Drawn` event from the package in `verify.package`.
+- Offline: check `attestation` against Zend's public key with [`verifyAttestation`](/fairness/attestations#verify-a-receipt).

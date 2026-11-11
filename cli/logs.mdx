@@ -1,0 +1,22 @@
+---
+title: "zend logs tail"
+description: "Show recent webhook deliveries for your account."
+---
+
+```bash
+zend logs tail --limit 20
+```
+
+```text
+2026-07-06T14:20:11Z  PaymentRequestSucceeded       delivered   200  attempts=1  https://yourapp.com/webhooks/zend
+2026-07-06T14:15:03Z  PaymentRequestCreated         delivered   200  attempts=1  https://yourapp.com/webhooks/zend
+2026-07-06T13:58:47Z  PaymentRequestFailed          failed      502  attempts=3  https://yourapp.com/webhooks/zend
+```
+
+Shows up to 50 of your most recent payment request webhook deliveries, newest first. `--limit` defaults to 50.
+
+Use it to debug an endpoint that isn't receiving events before you add logging to your server.
+
+<Note>
+This shows payment request webhooks for your account. For a ZApp's webhooks, call [`GET /apps/server/events`](/reference/webhooks#catch-up) with the app key.
+</Note>

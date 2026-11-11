@@ -1,0 +1,85 @@
+---
+title: "Take a payment"
+description: "Send money from the current user to another Zend user with zend.pay."
+---
+
+`zend.pay` asks the current user to send money to a Zend user. Zend checks your limits, shows its confirm sheet, sends the money, and records the payment against your app.
+
+```ts
+const { paymentId, status } = await zend.pay({
+  to: "@ada",
+  price: { ngn: 2000 },
+  note: "Article: How to win at Ludo",
+  reference: "article_7",
+});
+```
+
+Needs the `pay` permission.
+
+## Parameters
+
+<ParamField body="to" type="`@${string}`" required>
+  The recipient's username, with `@`.
+</ParamField>
+
+<ParamField body="amount" type="number">
+  US dollars, from 0.01. Give `amount` or `price`, not both.
+</ParamField>
+
+<ParamField body="price" type="{ ngn: number }">
+  Price in Naira. Zend converts at its current rate and shows ₦ on its sheet.
+</ParamField>
+
+<ParamField body="note" type="string">
+  Shown to both people.
+</ParamField>
+
+<ParamField body="reference" type="string">
+  Up to 64 characters. Comes back on the webhook.
+</ParamField>
+
+<ParamField body="interactionId" type="string">
+  The interaction this payment is part of. With a [spend allowance](/money/allowance), payments to other people in it can skip the confirm sheet.
+</ParamField>
+
+<ParamField body="splits" type="object[]">
+  Pay others from the same payment. See [Split payments](/money/splits).
+</ParamField>
+
+## Returns
+
+`{ paymentId, status }`. Use it to update your UI, not to grant anything.
+
+## Confirm on your server
+
+`payment.completed` reaches your webhook even if the user closes your app right after paying.
+
+```json
+{
+  "type": "payment.completed",
+  "data": {
+    "payment_id": "…",
+    "from": "zu_...",
+    "to": "zu_...",
+    "amount_usd": 1.32,
+    "price_ngn": 2000,
+    "ngn_per_usd": 1515.15,
+    "rate_id": "…",
+    "reference": "article_7"
+  }
+}
+```
+
+Before recording it, Zend checks the payer, recipient and amount against what your app asked for. See [Verifying payments](/money/verifying-payments).
+
+## Errors
+
+| Code | Meaning |
+|---|---|
+| `USER_CANCELLED` | The user tapped Cancel |
+| `BUSY` | Another money sheet is open |
+| `PERMISSION_DENIED` | Your manifest lacks `pay` |
+| `INVALID_AMOUNT` | Amount missing or out of range |
+| `APP_LIMIT_AMOUNT` | Over your tier's payment size |
+| `APP_LIMIT_DAILY` | Over your tier's daily spend for this user |
+| `NOT_CONNECTED` | The user hasn't continued to your app |

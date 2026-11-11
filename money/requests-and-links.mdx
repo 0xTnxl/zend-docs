@@ -1,0 +1,77 @@
+---
+title: "Ask links and money links"
+description: "Collect money from anyone with an ask link, or give money away with a money link."
+---
+
+## Ask links
+
+`zend.request` makes a link others can pay to the current user.
+
+```ts
+const { id, url } = await zend.request({
+  price: { ngn: 1500 },
+  note: "Your share of lunch",
+  maxPayments: 8,
+  reference: "lunch_42",
+});
+```
+
+Needs `request_payment`.
+
+| Param | Notes |
+|---|---|
+| `amount` / `price` | Omit both to let payers choose the amount |
+| `note` | Shown to payers |
+| `maxPayments` | How many times the link can be paid |
+| `reference` | Up to 64 characters |
+
+You get `{ id, url }` and can share `url` yourself. Payers sign in to Zend to pay. Each payment sends a `payment.completed` webhook with `ask_link_id` instead of `payment_id`.
+
+With `price: { ngn }`, the link asks for that many Naira every time it's paid, at the rate at that moment.
+
+## Money links
+
+`zend.createLink` makes a link that anyone holding it can collect.
+
+```ts
+const { id, status } = await zend.createLink({
+  amount: 5,
+  uses: 3,
+  note: "Prize for the top 3",
+  reference: "t_9",
+});
+```
+
+Needs `create_link`.
+
+| Param | Notes |
+|---|---|
+| `amount` / `price` | Per person. At least $1 |
+| `uses` | 1–100 people. Default 1 |
+| `note` | Shown to collectors |
+| `reference` | Up to 64 characters. Stored with the link |
+
+Zend opens its own share sheet. Your app gets `{ id, status }` and never sees the link itself, so a page can't leak it. Each collection sends a `link.claimed` webhook:
+
+```json
+{ "type": "link.claimed", "data": { "link_id": "…", "by": "zu_...", "amount_usd": 5, "reference": "t_9" } }
+```
+
+`by` is `null` if the collector has never connected your app.
+
+### Money links behave like cash
+
+- Anyone holding the link can collect it.
+- The sender can take back whatever isn't collected from **My Links**.
+- Unclaimed money returns to the sender automatically when the link expires (7 days by default).
+- For "one per person" prizes, make one single-use link per person.
+
+### Errors
+
+| Code | Meaning |
+|---|---|
+| `BELOW_MINIMUM` | Under $1 per person |
+| `ABOVE_LINK_MAXIMUM` | Over the Zend-wide per-link cap |
+| `APP_LIMIT_USES` | More people than your tier allows per link |
+| `LINKS_AT_CAPACITY` | Zend-wide link capacity reached; try later |
+| `APP_GAS_BUDGET` | Your app's monthly network budget is used up. See [Limits](/ship/limits#network-budget) |

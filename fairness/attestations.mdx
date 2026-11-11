@@ -1,0 +1,65 @@
+---
+title: "Attestations"
+description: "Commit before play, reveal after, and let anyone check with zend.attest."
+---
+
+`zend.attest` records a hash with Zend and returns a receipt signed by Zend. Receipts are chained, so a deleted or edited record is detectable. Use it for commit-reveal: commit to a secret before the game, reveal it after, and let anyone check you didn't change it.
+
+Needs the `attest` permission. Apps that do this can set `results: "checked"` in their manifest, which shows "Checked afterwards so nobody can cheat" on the listing.
+
+## Commit and reveal
+
+```ts
+const commitment = await sha256Hex(`${secret}|${saltHex}|${interactionId}|${me.appUserId}`);
+const receipt = await zend.attest({ label: "commit", dataHash: commitment, interactionId });
+
+// ...play...
+
+await zend.attest({
+  label: "reveal",
+  dataHash: await sha256Hex(`${secret}|${saltHex}`),
+  interactionId,
+});
+```
+
+## Receipt
+
+```ts
+{
+  id: number;
+  app: string;
+  app_user_id: string;
+  interaction_id: string;
+  label: string;
+  data_hash: string;
+  prev_hash: string;   // links to the previous receipt
+  unix_ms: number;
+  receipt_hash: string;
+  signature: string;   // Ed25519 by Zend
+}
+```
+
+## Fetch receipts
+
+Anyone can read them, no auth needed:
+
+```bash
+curl https://api.usezend.app/api/zend/v2/apps/attest/interactions/int_...
+curl https://api.usezend.app/api/zend/v2/apps/attest/key
+```
+
+## Verify a receipt
+
+```ts
+import { verifyAttestation } from "@zendfi/appkit/server";
+
+// { "alg": "ed25519", "public_key": "<hex>" }
+const { public_key } = await (await fetch("https://api.usezend.app/api/zend/v2/apps/attest/key")).json();
+const ok = verifyAttestation(receipt, public_key);
+```
+
+`verifyAttestation` recomputes `receipt_hash` from the receipt's fields and checks Zend's signature over it.
+
+<Note>
+This catches lies after the game. It doesn't stop players from using solvers during it; detect those separately.
+</Note>

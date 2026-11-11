@@ -1,0 +1,40 @@
+---
+title: "Split payments"
+description: "Pay several people, including your app, from one payment."
+---
+
+A split sends parts of one payment to other people in the same go. Use it to take a platform fee, or to pay a writer and an editor together.
+
+```ts
+// Ada gets ₦1,800 and your app gets ₦200.
+await zend.pay({
+  to: "@ada",
+  price: { ngn: 2000 },
+  splits: [{ to: "app", percent: 10 }],
+  reference: "article_7",
+});
+```
+
+## Rules
+
+- Up to 3 splits.
+- Each split goes to `"app"` or an `@username`, and has either `percent` (above 0, below 100) or `amount` in US dollars.
+- `to` gets whatever is left. Every part, including the rest, must be at least $0.01.
+- Each person can appear once.
+- Zend shows every part on its confirm sheet before the user confirms.
+
+Invalid splits fail with `SPLIT_INVALID`.
+
+## Your app's payout account
+
+`"app"` sends money to the Zend account you choose as your app's payout account. Set it once with the CLI:
+
+```bash
+zend apps payout <slug> <username>
+```
+
+Until it's set, splits to `"app"` fail with `APP_PAYOUT_NOT_SET`.
+
+## Webhook
+
+The `payment.completed` event for a split payment includes every part in `parts`, alongside the usual `amount_usd` total and `reference`.

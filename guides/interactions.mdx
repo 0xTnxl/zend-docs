@@ -1,0 +1,117 @@
+---
+title: "Interactions"
+description: "Shared state with a state machine Zend enforces: challenges, rounds, bookings."
+---
+
+An interaction is Zend's record of a shared activity. You define its states and allowed moves in the [manifest](/guides/manifest#interactiontypes); Zend stores it, enforces the moves, notifies participants, and redraws its cards when it changes.
+
+```json
+{
+  "id": "int_ab12cd34ef56",
+  "app": "accident",
+  "type": "challenge",
+  "participants": [
+    { "appUserId": "zu_...", "username": "tunde", "name": "Tunde", "avatar": null }
+  ],
+  "state": "accepted",
+  "data": { "round": 2 },
+  "visibility": "participants",
+  "version": 3,
+  "url": "https://app.usezend.app/i/int_ab12cd34ef56"
+}
+```
+
+The client SDK returns `participants` in camelCase. The server API and webhooks use snake_case (`app_user_id`) and also include `money_ref`, `chat_message_id`, `expires_at`, `created_at` and `updated_at`.
+
+## How your page gets one
+
+Read `zend.launch` once on load:
+
+```ts
+const { interaction, start, from } = zend.launch;
+
+if (interaction) {
+  // Opened from a chat action, a card button, or an /i/<id> link.
+  const game = await zend.interaction.get(interaction);
+} else if (start) {
+  // A card's start_interaction button asked you to start this type.
+  // `from` is the interaction whose card was tapped, so you can reuse its people.
+}
+```
+
+## Create
+
+```ts
+const game = await zend.interaction.create({
+  type: "challenge",
+  participants: ["@danny"],
+  data: { round: 1 },
+  visibility: "participants",
+  expiresInSecs: 3600,
+  reuseOpen: true,
+});
+```
+
+| Param | Notes |
+|---|---|
+| `type` | A key of `interactionTypes`. Otherwise `UNKNOWN_INTERACTION_TYPE` |
+| `participants` | `@username`, `zu_...`, or a `pick` token from the [people picker](/guides/people-picker). The current user is always added. Max 50 |
+| `data` | Your JSON, up to 4 KB |
+| `visibility` | `participants` (default), `friends`, or `public` (public apps only) |
+| `expiresInSecs` | 60 seconds to 90 days. Default 7 days |
+| `reuseOpen` | If the same people already have an unfinished one of this type from the last 30 minutes, return it instead of making a new one |
+
+Your server can create interactions too, on behalf of a user who has connected your app. See [`createInteraction`](/reference/server-sdk#createinteraction-params).
+
+## Update
+
+```ts
+await zend.interaction.update(game.id, {
+  state: "accepted",
+  data: { round: 2 },
+  idempotencyKey: `${game.id}:accept`,
+  expectedVersion: 3,
+});
+```
+
+- `state` is the current state, or one your manifest allows from it. Otherwise `INVALID_TRANSITION`.
+- `data` is shallow-merged into the existing data. The total stays under 4 KB.
+- `idempotencyKey` is required, up to 100 characters. Repeating a key returns the current interaction and changes nothing. Use one key per logical action.
+- `expectedVersion` is optional. If someone else updated first, the call fails with `VERSION_CONFLICT`; re-read and retry.
+- Terminal interactions can't change (`INTERACTION_FINISHED`).
+
+### Who can update
+
+Participants can update from their page. Your server can update any of your app's interactions with your app key. Moves marked `serverOnly` in the manifest are refused from a page with `TRANSITION_SERVER_ONLY` and accepted only from your server:
+
+```ts server.ts
+await zend.updateInteraction(id, {
+  state: "resolved",
+  data: { winner: "zu_..." },
+  idempotency_key: `${id}:resolve`,
+});
+```
+
+For any game with money or a prize, let your server decide the result.
+
+## Expiry
+
+At `expires_at`, Zend moves unfinished interactions to `expired` if the type declares an `expired` state. Otherwise the deadline is cleared and nothing happens. After the deadline, the only allowed update is to `expired`.
+
+## Visibility
+
+| Value | Who can read it and see its cards |
+|---|---|
+| `participants` | Participants |
+| `friends` | Participants, and anyone with a mutual connection to a participant |
+| `public` | Any signed-in user. Public apps only, otherwise `VISIBILITY_NOT_ALLOWED` |
+
+## Realtime and webhooks
+
+Every change sends an event to each participant's Zend client, so cards redraw on their own. Your server receives `interaction.created` and `interaction.updated` [webhooks](/reference/webhooks). Webhooks can arrive out of order; use `version` to ignore stale ones.
+
+For messages between players during a game, use a [live room](/guides/live-rooms) instead of updating the interaction on every move.
+
+## Links
+
+`https://app.usezend.app/i/<id>` opens your app at `/?interaction=<id>` for anyone allowed to see it, after sign-in if needed.

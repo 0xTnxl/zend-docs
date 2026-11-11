@@ -1,0 +1,102 @@
+---
+title: "Prizes"
+description: "Host-funded prizes that Zend holds until your server says who won."
+---
+
+A host puts up a prize, players join for free, and your server decides the winners. Zend's prize rules hold the money until then. Entry fees and stakes aren't available.
+
+## Setup
+
+<Steps>
+  <Step title="Generate a resolver key">
+    ```bash
+    zend apps resolver-key
+    ```
+
+    Put the printed `resolverKey` in your manifest. Keep `ZEND_RESOLVER_SEED` on your server only; it signs results.
+  </Step>
+  <Step title="Update the manifest">
+    Add the `prize` permission and set `results` to `"app"` or `"checked"`:
+
+    ```json
+    {
+      "permissions": ["prize"],
+      "results": "app",
+      "resolverKey": "3b6a27bc…"
+    }
+    ```
+  </Step>
+</Steps>
+
+## Lifecycle
+
+```text
+create (host funds) → join (players, free) → resolve (your server signs)
+   → wait (dispute window, at least 10 min) → paid
+
+During the wait: your server can correct the result once; the host can cancel (everything back to host).
+No result by the resolve deadline: everything back to host.
+```
+
+## In your page
+
+```ts
+const prize = await zend.prize.create({
+  amount: 20,
+  joinInSecs: 3600,
+  resolveInSecs: 86400,
+  maxPlayers: 32,
+  disputeSecs: 3600,
+  reference: "tournament_9",
+  interactionId,
+});
+
+await zend.prize.join(prize.id);   // players
+await zend.prize.get(prize.id);
+await zend.prize.cancel(prize.id); // host, only during the wait after results
+```
+
+`amount` is in US dollars (at least 1), or pass `price: { ngn }`. Zend shows the rules before the host confirms.
+
+## On your server
+
+```ts
+import { ZendServer } from "@zendfi/appkit/server";
+
+const zend = new ZendServer(process.env.ZEND_APP_KEY!);
+
+const p = await zend.getPrize(prizeId); // p.players: [{ address, app_user_id }]
+const first = p.players.find((x) => x.app_user_id === winnerId).address;
+
+await zend.resolvePrize(prizeId, [first], [20], process.env.ZEND_RESOLVER_SEED!);
+
+// Made a mistake? Once, during the wait:
+await zend.resolvePrize(prizeId, [other], [20], process.env.ZEND_RESOLVER_SEED!, true);
+```
+
+Zend and the prize contract both check that:
+
+- Winners joined the prize.
+- No winner appears twice.
+- There are at most 50 winners.
+- The amounts add up to no more than the prize. Anything left over returns to the host.
+
+## Webhooks
+
+| Event | When |
+|---|---|
+| `prize.created` | The host funded it |
+| `prize.joined` | A player joined (`data.by` is their `appUserId`) |
+| `prize.resolved` | Your server posted results |
+| `prize.paid` | The wait ended and winners were paid |
+| `prize.refunded` | Money returned to the host. `reason` is `vetoed` or `no_result` |
+
+## Limits
+
+| Tier | Largest prize |
+|---|---|
+| private | $20 |
+| public | $100 |
+| growth | $500 |
+
+A Zend-wide cap of $100 also applies while the prize contract is new.

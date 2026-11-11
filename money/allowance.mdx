@@ -1,0 +1,50 @@
+---
+title: "Spend allowance"
+description: "Let users approve small in-game payments once instead of on every tap."
+---
+
+A spend allowance lets your app pay small amounts without Zend's confirm sheet, within limits the user agrees to. It's built for fast games: tipping an opponent, buying a hint.
+
+```ts
+// Once: Zend asks the user. They can lower either limit or say not now.
+const allowance = await zend.allowance.request({
+  perPayment: { ngn: 500 },
+  perDay: { ngn: 2000 },
+});
+
+// Then this goes through without the confirm sheet.
+await zend.pay({ to: "@ada", price: { ngn: 200 }, interactionId: game.id, reference: "tip_42" });
+```
+
+If you leave out the limits, Zend suggests ₦500 per payment and ₦2,000 per day. If the user says not now, `request` rejects with `USER_CANCELLED`.
+
+## When the sheet is skipped
+
+`pay` skips the confirm sheet only when **all** of these are true:
+
+- The amount fits both the per-payment and the remaining daily limit.
+- `to` is another person in `interactionId`, or your app's payout account.
+
+Anything else shows the sheet as usual, so an allowance can't be used to pay arbitrary people. Limits never exceed your tier's.
+
+## What the user sees
+
+- A small note for every payment made under the allowance.
+- A summary each evening.
+- Controls in **Settings → Connected apps** to change or turn it off.
+
+## When it ends
+
+- After 90 days.
+- When the user turns it off, or disconnects your app.
+- When your app is suspended.
+- After 7 days without use, Zend asks again.
+
+## Read the current allowance
+
+```ts
+const a = await zend.allowance.get();
+// null, or:
+// { per_payment_ngn, per_day_ngn, per_payment_usd, per_day_usd,
+//   spent_today_ngn, spent_today_usd, expires_at }
+```

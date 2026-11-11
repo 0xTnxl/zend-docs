@@ -1,0 +1,106 @@
+---
+title: "Errors"
+description: "Every error code, where it comes from, and what to do."
+---
+
+In the browser, every SDK call rejects with `ZendError { code, message }`. Over HTTP, errors are `{ "error": CODE, "message": "..." }`. On the server SDK, thrown errors carry `code` and `status`.
+
+`message` is for your logs. Show your own copy to users, such as "That didn't go through. Try again." See the [copy guide](/ship/copy-guide).
+
+```ts
+try {
+  await zend.pay({ to: "@ada", price: { ngn: 500 } });
+} catch (e) {
+  if (e instanceof ZendError && e.code === "USER_CANCELLED") return; // not an error
+  showToast("That didn't go through. Try again.");
+}
+```
+
+## SDK and bridge
+
+| Code | Meaning / what to do |
+|---|---|
+| `NOT_IN_ZEND` | Page opened outside Zend. Link to `app.usezend.app/apps/<slug>` |
+| `TIMEOUT` | No reply in 10 minutes |
+| `UNKNOWN_METHOD` | This Zend version is too old for the call. Fall back or ask the user to update |
+| `PERMISSION_DENIED` | Your manifest lacks the permission |
+| `INVALID_PARAMS` / `INVALID_REQUEST` | Fix the call |
+| `NOT_CONNECTED` | The user hasn't continued to your app, or disconnected it |
+| `RATE_LIMITED` | Too many calls. Back off and retry |
+
+## Apps
+
+| Code | Meaning / what to do |
+|---|---|
+| `APP_NOT_FOUND` / `NO_MANIFEST` | Wrong slug, or no manifest uploaded |
+| `APP_SUSPENDED` | Zend suspended your app |
+| `INVALID_MANIFEST` | See `errors[]` |
+| `SLUG_TAKEN` | Pick another slug |
+| `INVALID_APP` | Fix the slug or name |
+| `APP_LIMIT` | You already have 10 apps |
+| `INVALID_API_KEY` | Wrong or missing `zapp_sk_` key |
+| `INVALID_APP_SESSION` / `GRANT_REVOKED` | Ask the page for a fresh `appSession`, or treat the user as signed out |
+| `APPKIT_UNAVAILABLE` | Zend-side outage. Retry later |
+
+## Money
+
+| Code | Meaning / what to do |
+|---|---|
+| `USER_CANCELLED` | The user tapped Cancel. Not an error to report |
+| `BUSY` | Another money sheet is open. Wait for it |
+| `INVALID_AMOUNT` / `AMOUNT_REQUIRED` | Fix the amount |
+| `REFERENCE_TOO_LONG` / `INVALID_REFERENCE` | `reference` must be 1–64 characters |
+| `APP_LIMIT_AMOUNT` / `APP_LIMIT_DAILY` / `APP_LIMIT_USES` | Over your [tier](/ship/limits) |
+| `BELOW_MINIMUM` / `ABOVE_LINK_MAXIMUM` / `LINKS_AT_CAPACITY` | Zend-wide link limits |
+| `APP_GAS_BUDGET` | Monthly network budget used up. New links, prizes, joins and draws resume on the 1st (UTC) |
+| `SPLIT_INVALID` | Fix the [splits](/money/splits) |
+| `APP_PAYOUT_NOT_SET` | Run `zend apps payout <slug> <username>` |
+| `PAYMENT_MISMATCH` / `TICKET_EXPIRED` | Zend couldn't confirm the payment matched what you asked for. Nothing was recorded; ask the user to try again |
+
+## Interactions
+
+| Code | Meaning / what to do |
+|---|---|
+| `UNKNOWN_INTERACTION_TYPE` | Type not in your manifest |
+| `INTERACTION_NOT_FOUND` | Wrong ID, or the caller can't see it |
+| `INVALID_TRANSITION` | Not allowed by your state machine |
+| `TRANSITION_SERVER_ONLY` | Only your server can make this move |
+| `INTERACTION_FINISHED` / `INTERACTION_EXPIRED` | Start a new one |
+| `VERSION_CONFLICT` | Re-read and retry |
+| `IDEMPOTENCY_KEY_REQUIRED` | Add one |
+| `DATA_TOO_LARGE` | Keep `data` under 4 KB |
+| `TOO_MANY_PARTICIPANTS` | At most 50 people |
+| `NOT_A_PARTICIPANT` / `WRONG_APP` | The caller can't touch this interaction |
+| `VISIBILITY_NOT_ALLOWED` | `public` needs a public app |
+
+## Cards
+
+| Code | Meaning / what to do |
+|---|---|
+| `TEMPLATE_NOT_DECLARED` / `INVALID_SLOTS` | Fix `cardTypes` or the slots. See `errors[]` |
+| `POSTING_NOT_ALLOWED` / `APP_MUTED` | The user didn't allow posting, or muted your app |
+| `CARD_LIMIT` | Daily cap reached |
+| `CHAT_NEEDS_TWO` / `NOTHING_TO_SHOW` | The placement doesn't fit the interaction |
+
+## Draws and live rooms
+
+| Code | Meaning / what to do |
+|---|---|
+| `DRAW_MISMATCH` | That label was already drawn with other settings |
+| `TOO_MANY_DRAWS` | 50 draws per interaction |
+| `INVALID_LABEL` / `INVALID_KIND` / `INVALID_RANGE` | Fix the draw parameters |
+| `DRAW_IN_PROGRESS` / `DRAW_RETRY` | Try again in a moment |
+| `LIVE_RATE_LIMITED` | Over 20 messages a second |
+| `LIVE_FRAME_TOO_LARGE` | Message over 8 KB |
+
+## Prizes
+
+| Code | Meaning / what to do |
+|---|---|
+| `PRIZE_NOT_FOUND` | Wrong prize ID |
+| `JOIN_CLOSED` | The join deadline passed |
+| `NOT_HOST` | Only the host can cancel |
+| `WINDOW_CLOSED` | Too late to cancel |
+| `NO_RESOLVER_KEY` | Add `resolverKey` to your manifest |
+| `INVALID_WINNER` / `INVALID_RESULT` / `INVALID_SIGNATURE` | Fix the result or the signing seed |
+| `PRIZE_NOT_RESOLVABLE` | The prize can't take that result now, for example after a correction was already used |

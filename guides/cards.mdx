@@ -1,0 +1,67 @@
+---
+title: "Cards"
+description: "Show up in chats and the Activity feed with cards Zend draws for you."
+---
+
+Cards are how your app appears in chats and the Activity feed. You pick a template and fill its slots; Zend draws the card, adds your app's name, and shows the interaction's live state.
+
+```ts
+await zend.postCard({
+  interactionId: game.id,
+  template: "result",
+  placement: "chat",
+  idempotencyKey: `${game.id}:result`,
+  slots: {
+    title: "Tunde beat Danny at Accident",
+    emoji: "😂",
+    buttons: [{ label: "Challenge again", action: "start_interaction", type: "challenge" }],
+  },
+});
+```
+
+Needs the `post_card` permission, the template listed in `cardTypes`, and the user's consent to post.
+
+## Templates
+
+| Template | Use it for | Shows live state |
+|---|---|---|
+| `result` | Something finished: "Tunde beat Danny 😂" | No |
+| `invite` | Asking someone to act. Buttons turn off once the interaction finishes | Yes |
+| `status` | Ongoing progress: "4 of 12 rounds done" | Yes |
+
+Older Zend versions that don't know a template show a plain **Open** card.
+
+## Slots
+
+| Slot | Rules |
+|---|---|
+| `title` | Required, up to 80 characters |
+| `subtitle` | Up to 140 characters |
+| `emoji` | One emoji |
+| `media` | `https` image URL |
+| `buttons` | Up to 2 |
+| `check` | `result` cards only. Shows **Result checked ✓** when the interaction's [draws](/fairness/random-draws) verify |
+
+You can't set amounts or participants. Zend fills those from the interaction. Text must follow the [copy guide](/ship/copy-guide).
+
+## Buttons
+
+Every button needs a `label` of 1–20 characters.
+
+| `action` | Field | What happens |
+|---|---|---|
+| `open_sheet` | `path` | Opens your app at `path?interaction=<id>` |
+| `start_interaction` | `type` | Opens your app at `/?start=<type>` (with `from=<id>`) |
+| `open_url` | `url` | URL must be on your origins. Opens inside your app |
+
+## Placement
+
+- **`chat`**: a bubble in the DM between the poster and the other participant. Only for interactions with exactly two people (`CHAT_NEEDS_TWO`).
+- **`feed`**: shows in **From your apps** at the top of Activity for everyone who can see the interaction. A `participants` interaction needs at least two people (`NOTHING_TO_SHOW`).
+
+## Posting rules
+
+- The posting user must be a participant and must have allowed posting on the consent sheet (`POSTING_NOT_ALLOWED`).
+- Users who muted your app don't see or post your cards (`APP_MUTED`).
+- Each user can post up to the lower of your tier's daily cap and your manifest's `limits.cardsPerUserPerDay` (`CARD_LIMIT`). See [Limits](/ship/limits).
+- `idempotencyKey` is per user. Repeating it returns the existing card.
