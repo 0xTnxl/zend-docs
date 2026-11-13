@@ -1,0 +1,70 @@
+---
+title: "Build with AI"
+description: "Connect your coding assistant to the Zend docs so it builds against the real API."
+---
+
+These docs are served to AI tools as an MCP server and as plain text, so your assistant can look up the real SDK instead of guessing.
+
+## Connect the docs MCP server
+
+<Tabs>
+  <Tab title="Claude Code">
+    ```bash
+    claude mcp add --transport http zend https://docs.usezend.app/mcp
+    ```
+  </Tab>
+  <Tab title="Codex">
+    ```bash
+    codex mcp add --transport http zend https://docs.usezend.app/mcp
+    ```
+  </Tab>
+  <Tab title="Cursor">
+    Add to `.cursor/mcp.json`:
+
+    ```json
+    {
+      "mcpServers": {
+        "zend": { "url": "https://docs.usezend.app/mcp" }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="VS Code">
+    Add to `.vscode/mcp.json`:
+
+    ```json
+    {
+      "servers": {
+        "zend": { "type": "http", "url": "https://docs.usezend.app/mcp" }
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Plain-text docs
+
+| URL | What it is |
+|---|---|
+| `https://docs.usezend.app/llms.txt` | An index of every page |
+| `https://docs.usezend.app/llms-full.txt` | Every page in one file |
+| Any page URL with `.md` added | That page as Markdown |
+
+Every page also has a menu at the top to copy it as Markdown or open it in ChatGPT, Claude or Perplexity.
+
+## A prompt to start with
+
+```text
+Read https://docs.usezend.app/llms.txt. Build a ZApp with @zendfi/appkit:
+a page that signs the user in with zend.identity.get(), a zapp.json manifest,
+and a Node server that verifies appSession with ZendServer.verifySession and
+verifies webhooks with verifyWebhook. Credit payments only on payment.completed.
+Show my own copy to users, never ZendError.message.
+```
+
+## Rules worth giving your assistant
+
+- Money is confirmed on the server from the `payment.completed` webhook, never from the browser promise.
+- Moves that decide a winner are `serverOnly` in the manifest and made by the server.
+- Anything users read follows the [copy guide](/ship/copy-guide): no crypto words, amounts in Naira.
+- The app key (`zapp_sk_...`) and resolver seed never reach the browser.

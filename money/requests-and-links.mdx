@@ -1,7 +1,19 @@
 ---
-title: "Ask links and money links"
-description: "Collect money from anyone with an ask link, or give money away with a money link."
+title: "Money links and ask links"
+description: "Money that travels as a URL: give it with a money link, collect it with an ask link."
 ---
+
+On Zend, money can move as a link. Send it in a chat, an email, a QR code or a tweet; whoever opens it can collect it or pay it, even if they weren't on Zend yet.
+
+| | Money link | Ask link |
+|---|---|---|
+| Direction | You give | You collect |
+| SDK call | `createLink` | `request` |
+| Holds money | Yes, until collected or taken back | No |
+| Who can use it | Whoever holds the link | Anyone who opens it and signs in |
+| Webhook | `link.claimed` per collector | `payment.completed` per payer |
+
+Inside Zend these are called Zlinks.
 
 ## Ask links
 
@@ -61,6 +73,7 @@ Zend opens its own share sheet. Your app gets `{ id, status }` and never sees th
 
 ### Money links behave like cash
 
+- The key that unlocks the money is made on the sender's phone and travels in the link after the `#`. Zend never sees it, which is why your app only gets the link's `id`.
 - Anyone holding the link can collect it.
 - The sender can take back whatever isn't collected from **My Links**.
 - Unclaimed money returns to the sender automatically when the link expires (7 days by default).

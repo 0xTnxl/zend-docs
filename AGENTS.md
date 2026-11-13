@@ -19,6 +19,13 @@
 - `reference/`: client SDK, server SDK, REST API, webhooks, errors.
 - `cli/`: one page per command group.
 
+## Positioning
+- Zend is "the money network for the internet". Developer line: "Build on the money network for the internet."
+- Frame features as one of three layers: People (@names, one ID per person across apps), Money (pay, ask links, money links, splits, prizes), Reach (chats, feed, Discover, links that open anywhere).
+- Two ways to build: inside Zend (ZApps, `@zendfi/appkit`) and anywhere (Pay with Zend).
+- Don't claim: open protocol, permissionless, decentralized, AppKit working outside Zend, user numbers, "instant".
+- Full guide: `drafts/positioning.md`.
+
 ## Terminology
 - "ZApp" for an app built on Zend. "Zend" for the product, never "ZendFi" in reader-facing text.
 - "money link" (not escrow link or give link), "ask link" for `request`, "collect" (not claim), "take back" (not reclaim).

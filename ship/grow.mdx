@@ -1,0 +1,39 @@
+---
+title: "Grow your app"
+description: "How ZApps reach people on the Zend network: chats, cards, links and Discover."
+---
+
+On the Zend network, your app starts where people already talk and send money. You don't need ads or an invite system; you need to use the surfaces Zend gives every app.
+
+## Be one tap away in every chat
+
+A [chat action](/guides/manifest#chatactions) puts your app in the **Apps** tray of every DM. Tapping it starts an interaction with the other person and opens your app. Name it for what people do ("Challenge", "Split", "Flip"), not for your brand.
+
+## Make every result an invite
+
+Post a [card](/guides/cards) when something happens. The other person sees it in the chat and can tap straight back in.
+
+- A `result` card with a `start_interaction` button ("Play again", "Rematch") starts the next round with the same people.
+- An `invite` card asks someone to act and switches off its buttons when the interaction ends.
+- A `status` card shows progress ("4 of 12 rounds done") and updates itself.
+- With `placement: "feed"`, cards also appear in **From your apps** for everyone who can see the interaction. Use `friends` visibility to reach people's friends.
+
+## Bring in people who aren't using your app yet
+
+- The [people picker](/guides/people-picker) returns `pick` tokens that work as participants even for people who've never opened your app.
+- `https://app.usezend.app/apps/<slug>` and `https://app.usezend.app/i/<id>` open your app for anyone, after they sign in to Zend if they need to.
+- A [money link](/money/requests-and-links#money-links) works for people who aren't on Zend at all. They sign up to collect it.
+
+## Get listed
+
+[Public apps](/ship/public-apps) are listed on Discover, by `category`, with your `name` and one-line `description`. They also lose the "Not checked by Zend" label and move to higher [limits](/ship/limits).
+
+## Keep people playing
+
+- Ask once for a [spend allowance](/money/allowance) so small payments in a game don't need the confirm sheet every time.
+- Use [live rooms](/guides/live-rooms) so both people see moves as they happen.
+- Keep cards honest and specific. People mute apps that post too much, and muted apps can't post to them.
+
+## Measure on your server
+
+Every interaction sends `interaction.created` and `interaction.updated` webhooks, and every payment sends `payment.completed`. Count them by `type` and `reference` to see what people start, finish and pay for.

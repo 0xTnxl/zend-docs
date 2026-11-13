@@ -2,9 +2,9 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "Zend Developers",
-  "description": "Build ZApps that open inside Zend and use Zend sign-in, payments, money links, interactions and cards.",
+  "description": "Build on the money network for the internet: people with @names, money that moves in seconds, and apps in the chats people already use.",
   "colors": {
-    "primary": "#16A34A",
+    "primary": "#15803D",
     "light": "#22C55E",
     "dark": "#15803D"
   },
@@ -17,15 +17,22 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Build",
         "groups": [
           {
             "group": "Get started",
-            "pages": ["index", "quickstart", "concepts"]
+            "pages": [
+              "index",
+              "network",
+              "quickstart",
+              "test-on-your-phone",
+              "build-with-ai"
+            ]
           },
           {
             "group": "Build a ZApp",
             "pages": [
+              "concepts",
               "guides/manifest",
               "guides/identity",
               "guides/interactions",
@@ -48,16 +55,32 @@
             ]
           },
           {
+            "group": "Build anywhere",
+            "pages": [
+              "pay-with-zend"
+            ]
+          },
+          {
             "group": "Fair results",
-            "pages": ["fairness/random-draws", "fairness/attestations"]
+            "pages": [
+              "fairness/random-draws",
+              "fairness/attestations"
+            ]
           },
           {
             "group": "Ship",
-            "pages": ["ship/public-apps", "ship/limits", "ship/copy-guide"]
+            "pages": [
+              "ship/grow",
+              "ship/public-apps",
+              "ship/limits",
+              "ship/copy-guide"
+            ]
           },
           {
             "group": "Examples",
-            "pages": ["examples/coinflip"]
+            "pages": [
+              "examples/coinflip"
+            ]
           }
         ]
       },
@@ -66,11 +89,18 @@
         "groups": [
           {
             "group": "@zendfi/appkit",
-            "pages": ["reference/client-sdk", "reference/server-sdk"]
+            "pages": [
+              "reference/client-sdk",
+              "reference/server-sdk"
+            ]
           },
           {
             "group": "HTTP",
-            "pages": ["reference/rest-api", "reference/webhooks", "reference/errors"]
+            "pages": [
+              "reference/rest-api",
+              "reference/webhooks",
+              "reference/errors"
+            ]
           }
         ]
       },
@@ -79,15 +109,26 @@
         "groups": [
           {
             "group": "Zend CLI",
-            "pages": ["cli/overview", "cli/login"]
+            "pages": [
+              "cli/overview",
+              "cli/login"
+            ]
           },
           {
             "group": "Commands",
-            "pages": ["cli/apps", "cli/keys", "cli/config", "cli/payments", "cli/logs"]
+            "pages": [
+              "cli/apps",
+              "cli/keys",
+              "cli/config",
+              "cli/payments",
+              "cli/logs"
+            ]
           },
           {
             "group": "Help",
-            "pages": ["cli/troubleshooting"]
+            "pages": [
+              "cli/troubleshooting"
+            ]
           }
         ]
       }
@@ -121,7 +162,16 @@
     }
   },
   "contextual": {
-    "options": ["copy", "view", "chatgpt", "claude", "perplexity", "mcp", "cursor", "vscode"]
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {

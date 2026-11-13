@@ -1,0 +1,60 @@
+---
+title: "How the Zend network works"
+description: "People, money and reach: what every app on Zend shares, and who controls what."
+---
+
+The Zend app is one app on the Zend network. Your app is another. Both see the same people, move the same money, and show up in the same chats and feed.
+
+## People
+
+Every person on Zend has an account and an @name.
+
+- **One ID in every app.** Your app sees each person as an `appUserId` (`zu_...`). It's the same in every ZApp and doesn't change when they change their @name, so you can use it as your user key.
+- **Consent per app.** The first time someone opens your app, Zend asks "Continue to {app} as {name}?". Email and the ability to pay them directly are separate toggles they can turn off later.
+- **No friend list for you to store.** The [people picker](/guides/people-picker) gives you only the people the user chose.
+
+See [Sign in with Zend](/guides/identity).
+
+## Money
+
+Money on Zend moves between people's own accounts.
+
+- **Each person controls their own money.** Balances sit in accounts only their owner can move. Every payment is confirmed by its owner on their phone, in a screen Zend draws. Zend doesn't hold a pool of customer funds.
+- **Settles in seconds.** Payments settle on Sui. Users never pay network fees: plain sends and `pay` cost nothing, and Zend covers the network cost of your app's links and prizes up to a [monthly budget](/ship/limits#network-budget).
+- **Priced in Naira.** Every money call takes `price: { ngn }`. Zend converts at its current rate and shows ₦ to the user.
+- **Money that travels as a URL.** A [money link](/money/requests-and-links#money-links) holds money until someone collects it. The key that unlocks it is made on the sender's phone and lives in the link itself, after the `#`, so Zend never sees it. Whatever isn't collected goes back to the sender at expiry.
+
+## Reach
+
+Apps reach people in two ways.
+
+| | Inside Zend (ZApps) | Anywhere (Pay with Zend) |
+|---|---|---|
+| Where it runs | Your web app, opened full screen in the Zend app and at `app.usezend.app` | Your website or backend |
+| Who sees it | People in chats, the Activity feed and Discover | Anyone you send a link to |
+| SDK | `@zendfi/appkit` | `pay-with-zend-sdk` (TypeScript, Python, Go) |
+| Money | Pay, ask links, money links, splits, prizes, allowances | Payment requests |
+| Start | [Quickstart](/quickstart) | [Pay with Zend](/pay-with-zend) |
+
+Inside Zend, distribution is built in: a chat action puts your app one tap away in every DM, and every card you post is an invite back. See [Grow your app](/ship/grow).
+
+## Who controls what
+
+| Zend runs | You run |
+|---|---|
+| Accounts, sign-in and consent | Your app's logic and data |
+| Every money screen, limits and payment records | When to ask for money, and what for |
+| Interaction storage and allowed moves | The state machine, in your manifest |
+| Drawing cards, posting rules, Discover | What your cards say |
+| Webhook delivery and signatures | Handling webhooks |
+
+Zend enforces anything involving money, identity, or what other people see. That's why your page can't move money on its own: it can only ask, and the person decides.
+
+## What anyone can check
+
+- **Random draws** are made with Sui's built-in randomness and recorded once per interaction and label. See [Random draws](/fairness/random-draws).
+- **Attestations** are signed by Zend and chained, so a deleted or edited record shows. Anyone can fetch them without an account. See [Attestations](/fairness/attestations).
+
+## Joining the network
+
+Any Zend account can create up to 10 apps. Private apps go live as soon as you deploy and are shared by link. Public apps go through review and are listed on Discover. See [Public apps](/ship/public-apps).

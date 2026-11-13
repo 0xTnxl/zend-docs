@@ -1,24 +1,41 @@
 ---
 title: "Build on Zend"
-description: "Make ZApps: web apps that open inside Zend and use Zend sign-in, payments, money links, interactions and cards."
+description: "Zend is the money network for the internet. Every person has an @name, money moves in seconds, and anyone can build apps on it."
 ---
 
-A **ZApp** is a web app you host on your own HTTPS origin. Zend opens it full screen inside the Zend mobile app and at `app.usezend.app`, and gives it Zend sign-in, money, shared state, realtime rooms and cards in chats and the Activity feed.
+Zend is a money network for the internet. Everyone on it has an @name, money moves between them in seconds with no fees, and anyone can build apps on top.
 
-Zend draws every money screen and every card. Your app asks for a payment; Zend shows its own confirm sheet, the user decides, and your server hears about it through a signed webhook. Your code never handles balances, keys or payment UI.
+Every app built on Zend shares the same network:
+
+- **People.** Sign in with Zend gives you a real person with an @name and one ID that's the same in every app. You don't build a sign-up screen.
+- **Money.** Payments, ask links, money links, splits and prizes, priced in Naira. Zend draws every money screen, so you never build or secure a payment UI.
+- **Reach.** Your app shows up in the chats and Activity feed people already use, and its links open anywhere a URL does.
+
+## Two ways to build
+
+<CardGroup cols={2}>
+  <Card title="ZApps: build inside Zend" icon="mobile-screen" href="/quickstart">
+    A web app that opens in the Zend app and at `app.usezend.app`. It sits in the chat **Apps** tray, posts cards to chats and the feed, and moves money with `@zendfi/appkit`.
+  </Card>
+  <Card title="Pay with Zend: build anywhere" icon="globe" href="/pay-with-zend">
+    Take payments from any website or backend. You create a payment link; it opens in the Zend app on phones and in web checkout everywhere else.
+  </Card>
+</CardGroup>
+
+## Start here
 
 <CardGroup cols={2}>
   <Card title="Quickstart" icon="rocket" href="/quickstart">
-    Create an app, upload a manifest and open it inside Zend in about ten minutes.
+    Create a ZApp and open it on your phone in about ten minutes.
   </Card>
-  <Card title="How ZApps work" icon="diagram-project" href="/concepts">
-    Identity, interactions, cards, custody, and who is trusted with what.
+  <Card title="How the network works" icon="diagram-project" href="/network">
+    People, money, reach, and who controls what.
   </Card>
-  <Card title="Client SDK" icon="code" href="/reference/client-sdk">
-    Every method on `init()` from `@zendfi/appkit`.
+  <Card title="Build with AI" icon="sparkles" href="/build-with-ai">
+    Connect your coding assistant to these docs.
   </Card>
   <Card title="Zend CLI" icon="terminal" href="/cli/overview">
-    Log in with your phone, create apps, deploy manifests and rotate keys.
+    Log in with your phone, create apps, deploy manifests, rotate keys.
   </Card>
 </CardGroup>
 
@@ -34,15 +51,25 @@ Zend draws every money screen and every card. Your app asks for a payment; Zend 
   <Card title="Tournaments" icon="trophy" href="/money/prizes">
     Host-funded prizes held safely until your server says who won.
   </Card>
+  <Card title="Group money" icon="users" href="/money/requests-and-links">
+    Collect from a group with an ask link, or hand out money with a money link.
+  </Card>
+  <Card title="Checkout" icon="cart-shopping" href="/pay-with-zend">
+    A Zend payment link on your own site, confirmed by a signed webhook.
+  </Card>
+  <Card title="Fair draws" icon="scale-balanced" href="/fairness/random-draws">
+    Coin flips, shuffles and winner picks that anyone can check afterwards.
+  </Card>
 </CardGroup>
 
-## The pieces
+## What you don't have to build
 
-| Piece | Where it lives | What it does |
-|---|---|---|
-| `@zendfi/appkit` | Your page | Talks to Zend: identity, money, interactions, cards, live rooms |
-| `@zendfi/appkit/server` | Your backend (Node 18+) | Verifies sessions and webhooks, moves interactions, resolves prizes |
-| Manifest (`zapp.json`) | Uploaded to Zend | Declares your origins, permissions, chat actions and state machines |
-| `zend` CLI | Your terminal and CI | Creates apps, checks and deploys manifests, manages keys |
+| You'd normally build | On Zend |
+|---|---|
+| Sign-up, login, profiles | `zend.identity.get()` |
+| Payment screens and their security | Zend's confirm sheet |
+| A friend list and invite flow | Zend's people picker and chat actions |
+| A realtime server | [Live rooms](/guides/live-rooms) |
+| Notifications that bring people back | Cards in chats and the Activity feed |
 
-All HTTP paths in these docs are under `https://api.usezend.app/api/zend/v2`.
+All HTTP paths in these docs are under `https://api.usezend.app`.

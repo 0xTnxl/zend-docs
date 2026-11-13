@@ -1,0 +1,56 @@
+---
+title: "Test on your phone"
+description: "Open your ZApp in Zend on a real phone, and debug it from your laptop."
+---
+
+## Open it on your phone
+
+Every ZApp has a link: `https://app.usezend.app/apps/<slug>`. Open it on a phone with Zend installed and it opens inside the app.
+
+The fastest way to get it onto your phone is a QR code in your terminal:
+
+```bash
+npx qrcode-terminal https://app.usezend.app/apps/hello
+```
+
+Scan it with your phone's camera. The first time, Zend asks you to continue to your app.
+
+To open it on a specific interaction, use `https://app.usezend.app/i/<interaction id>`.
+
+## Test from a chat
+
+Chat actions only appear in a chat. Open a DM with a friend (or a second account), tap **+ → Apps**, and pick your action. To let a friend open your app while it's private:
+
+```bash
+zend apps testers add hello danny
+```
+
+## Develop against your local machine
+
+Zend only opens HTTPS origins listed in your manifest. To point it at your laptop:
+
+<Steps>
+  <Step title="Start a tunnel">
+    Use any HTTPS tunnel, such as `cloudflared tunnel --url http://localhost:5173` or `ngrok http 5173`.
+  </Step>
+  <Step title="Add the tunnel to your manifest">
+    Add the tunnel's origin to `origins` (up to 5) and redeploy:
+
+    ```json
+    "origins": ["https://hello.example.com", "https://quiet-river-1234.trycloudflare.com"]
+    ```
+
+    ```bash
+    zend apps deploy zapp.json
+    ```
+  </Step>
+  <Step title="Open the tunnel's page in Zend">
+    Chat actions open `sheet` paths on your **first** origin, so put the tunnel first while you develop, then move your real origin back before you ship.
+  </Step>
+</Steps>
+
+## Debug
+
+- **On a laptop:** open `https://app.usezend.app/apps/<slug>` in a desktop browser. Your app runs in a frame, so your browser's dev tools show its console and network requests.
+- **On a phone:** add an in-page console such as [Eruda](https://github.com/liriliri/eruda) while you develop, and remove it before you ship.
+- **Webhooks:** call `GET /apps/server/events` with your app key to see what Zend sent and when it was delivered.

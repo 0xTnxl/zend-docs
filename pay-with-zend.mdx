@@ -1,0 +1,143 @@
+---
+title: "Pay with Zend"
+description: "Take payments from any website or backend with a Zend payment link."
+---
+
+Pay with Zend lets any website, backend or script ask for money on the Zend network. You create a payment request; Zend gives you a link. On a phone with Zend, the link opens Zend's own confirm sheet. Everywhere else it opens web checkout at `zdfi.me`. It's the same link either way.
+
+Money settles to your own Zend account. There's no separate merchant account.
+
+<Tip>
+Building something that runs inside Zend, in chats and the feed? Use [ZApps](/quickstart) instead.
+</Tip>
+
+## Get an API key
+
+```bash
+npx pay-with-zend-cli login
+```
+
+Approve the login on your phone. The CLI saves an API key (`zdev_live_...`) to `~/.zend/config.json`. To make a narrower key for your server, run [`zend keys create`](/cli/keys).
+
+## Create a payment request
+
+<CodeGroup>
+```ts TypeScript
+import { createZendClient } from "pay-with-zend-sdk";
+
+const zend = createZendClient({ apiKey: process.env.ZEND_API_KEY! });
+
+const payment = await zend.createZendPayment({
+  amount: 25.0,
+  description: "Order #1024",
+  expiresInMinutes: 15,
+  redirectUrl: "https://yourapp.com/checkout/return",
+});
+
+console.log(payment.linkUrl); // https://zdfi.me/@yourname/abc123def0
+```
+
+```python Python
+import os
+from pay_with_zend_sdk import ZendClient, ZendClientConfig, CreatePaymentRequestInput
+
+zend = ZendClient(ZendClientConfig(api_key=os.environ["ZEND_API_KEY"]))
+
+payment = zend.create_zend_payment(CreatePaymentRequestInput(
+    amount=25.0,
+    description="Order #1024",
+))
+print(payment.link_url)
+```
+
+```bash Go
+go get github.com/zendfi/zend-go-sdk
+```
+</CodeGroup>
+
+| Field | Rules |
+|---|---|
+| `amount` | US dollars, 0.01–100,000 |
+| `description` | Up to 500 characters |
+| `expiresInMinutes` | 1–60. Default 15 |
+| `redirectUrl` | `https`, up to 2,048 characters. Where the payer returns after paying |
+| `webhookUrl` | `https`. Overrides your account's webhook URL for this request |
+
+Send `payment.linkUrl` to your customer, or put it behind a **Pay with Zend** button.
+
+Needs the `create_payment_request` scope.
+
+## Confirm the payment
+
+Credit the order on the webhook, not on the redirect.
+
+```ts
+import express from "express";
+import { verifyWebhookSignature } from "pay-with-zend-sdk";
+
+app.post("/webhooks/zend", express.text({ type: "*/*" }), (req, res) => {
+  const ok = verifyWebhookSignature(req.body, req.header("X-Zend-Signature") ?? "", process.env.ZEND_WEBHOOK_SECRET!);
+  if (!ok) return res.sendStatus(401);
+
+  const event = JSON.parse(req.body);
+  if (event.event === "payment_request_succeeded") {
+    // credit event.payment_request
+  }
+  res.sendStatus(200);
+});
+```
+
+Set where events go with `zend config set webhookUrl <url>`. Zend creates your webhook secret (`whsec_...`) the first time you set a URL. Signatures use the same `t=<unix>,v1=<hex>` scheme as [ZApp webhooks](/reference/webhooks#verify-signatures), and are rejected after 5 minutes.
+
+| Event | When |
+|---|---|
+| `payment_request_created` | You created the request |
+| `payment_request_pending` | The payer started paying |
+| `payment_request_succeeded` | Paid |
+| `payment_request_failed` | The payment didn't go through |
+| `payment_request_expired` | Nobody paid before it expired |
+| `payment_request_cancelled` | The request was cancelled |
+
+Events fire only for requests you created through the API or CLI, never for ordinary payments between people. Failed deliveries retry after 1 minute, 5 minutes, 15 minutes, 1 hour and 1 day. See recent deliveries with [`zend logs tail`](/cli/logs).
+
+## Return to your site
+
+With `redirectUrl` set, the payer comes back to your site with `?zend_return_token=...`. Check it before resuming their session:
+
+```ts
+const { valid } = await zend.verifyReturnToken({
+  token: req.query.zend_return_token as string,
+  paymentRequestId: payment.id,
+});
+```
+
+Tokens are single-use and expire after 5 minutes. Every failure returns `valid: false`, with no reason given.
+
+## Check without charging
+
+[`zend payments test`](/cli/payments), or `zend.testPaymentRequest(input)`, runs the same checks as a real request without creating it, moving money, or sending a webhook. Use it in CI.
+
+## Look up requests
+
+```ts
+const request = await zend.getPaymentRequest(payment.id);
+// { id, status, amount, description, expiresAt, paidAt, hasRedirectUrl, linkUrl }
+
+const { requests } = await zend.listPaymentRequests({ status: "paid", limit: 20 });
+```
+
+`status` is `pending`, `paid`, `expired` or `cancelled`.
+
+## Full SDK reference
+
+<CardGroup cols={3}>
+  <Card title="TypeScript" icon="js" href="https://www.npmjs.com/package/pay-with-zend-sdk">
+    `pay-with-zend-sdk` on npm
+  </Card>
+  <Card title="Python" icon="python" href="https://pypi.org/project/pay-with-zend-sdk/">
+    `pay-with-zend-sdk` on PyPI
+  </Card>
+  <Card title="Go" icon="golang" href="https://github.com/zendfi/zend-go-sdk">
+    `github.com/zendfi/zend-go-sdk`
+  </Card>
+</CardGroup>
