@@ -220,7 +220,7 @@ unlock.gift(p: { item: string; to: string }): Promise<{ item: string; status: "g
 
 ### unlock.read(params)
 
-Not available yet: opens Seal-encrypted content on the user's device. Until Zend turns it on, it fails with `UNLOCK_UNAVAILABLE`. Serve content from your server after [`requireAccess`](/reference/server-sdk#requireaccess-appsession-item) instead. See [Pay-to-read](/money/unlock).
+Not available yet: opens Seal-encrypted content on the user's device. Until Zend turns it on, it fails with `UNLOCK_UNAVAILABLE`. Serve content from your server after [`requireAccess`](/reference/server-sdk) instead. See [Pay-to-read](/money/unlock).
 
 ```ts
 unlock.read(p: { item: string; data: Uint8Array | ArrayBuffer }): Promise<{ data: Uint8Array; text: string | null }>
