@@ -1,0 +1,97 @@
+---
+title: "Owambe Rooms"
+description: "A live party game for strangers: server-run rounds on live rooms, server-only moves, and friends made after the game."
+---
+
+Owambe Rooms is a game for six strangers. Everyone starts with play money and races to give it away through gifts and quick auctions; the biggest bag at the end loses. Then the room votes for the funniest person, and players add the people they clicked with. Each add starts a Zend chat.
+
+It never touches real money. Its manifest asks only for `post_card` and `connect`.
+
+<Card title="Source" icon="github" href="https://github.com/0xTnxl/owambe-rooms-zapp">
+  Engine, Node game server and page.
+</Card>
+
+## What it shows
+
+| Feature | How Owambe uses it |
+|---|---|
+| [Server-only moves](/guides/interactions#who-can-update) | Every phase change (`voting`, `results`, `done`) is `serverOnly`, so no page can end a round |
+| [Live rooms from your server](/guides/live-rooms#from-your-server) | The server joins each room with its app key, runs the rules, and answers as `from: "app"`. Pages send intents only and trust only `from: "app"` |
+| [Blocked pairs](/guides/people#keep-blocked-people-apart) | Matchmaking calls `blockedPairs` so two people who blocked each other never share a room |
+| [People connect and chat](/guides/people#add-someone-you-met) | After the vote, **Add** buttons call `people.connect` with a note like "Met in Room KQ7M2D" |
+| [Room links](/guides/people#room-links) | `zend.share` sends `https://app.usezend.app/apps/owambe?room=KQ7M2D`; the entry page reads `?room=` |
+| [Cards](/guides/cards) | `result` and `invite` cards in chats |
+
+## Manifest
+
+```json zapp.json
+{
+  "app": "owambe",
+  "name": "Owambe Rooms",
+  "version": "0.2.0",
+  "origins": ["https://owambe-rooms-zapp.onrender.com"],
+  "entry": "/",
+  "visibility": "public",
+  "permissions": ["post_card", "connect"],
+  "cardTypes": ["result", "invite"],
+  "chatActions": [
+    { "id": "play", "label": "Play Owambe", "sheet": "/", "interaction": "invite" }
+  ],
+  "interactionTypes": {
+    "round": {
+      "states": ["playing", "voting", "results", "done", "expired"],
+      "initial": "playing",
+      "transitions": {
+        "playing": [{ "to": "voting", "serverOnly": true }, { "to": "expired", "serverOnly": true }],
+        "voting":  [{ "to": "results", "serverOnly": true }, { "to": "expired", "serverOnly": true }],
+        "results": [{ "to": "done", "serverOnly": true }, { "to": "expired", "serverOnly": true }]
+      },
+      "terminal": ["done", "expired"]
+    },
+    "invite": {
+      "states": ["sent", "joined", "expired"],
+      "initial": "sent",
+      "transitions": {
+        "sent": [{ "to": "joined", "serverOnly": true }, { "to": "expired", "serverOnly": true }]
+      },
+      "terminal": ["joined", "expired"]
+    }
+  },
+  "custody": "contract",
+  "results": "app",
+  "webhook": "https://owambe-rooms-zapp.onrender.com/zend/webhook",
+  "description": "Give away your play money fast in a room of strangers. Biggest bag at the end loses.",
+  "category": "games"
+}
+```
+
+## How a round runs
+
+<Steps>
+  <Step title="Lobby">
+    Players wait in a plain HTTP lobby on Owambe's server. Nothing exists on Zend yet.
+  </Step>
+  <Step title="Start">
+    The server checks `blockedPairs`, creates a `round` interaction for the people in the lobby with `createInteraction`, opens the live room with its app key, and fills empty seats with in-game bots.
+  </Step>
+  <Step title="Play">
+    Pages join with `zend.live.join` and send intents (`gift`, `bid`, `react`). The server checks every rule and broadcasts the result as `from: "app"`.
+  </Step>
+  <Step title="Vote and results">
+    Votes go over HTTP, because everyone in a room sees every room message. The server moves the round to `voting`, then `results`, then `done`. At `done`, Zend closes the room.
+  </Step>
+  <Step title="Make friends">
+    The results screen shows **Add** buttons. Each calls `people.connect`, and a mutual add makes the two people friends in Zend.
+  </Step>
+</Steps>
+
+## Adding people after the game
+
+```ts
+const { status } = await zend.people.connect({
+  appUserId: player.appUserId,
+  interactionId: round.id,
+  note: `Met in Room ${roomCode}`,
+});
+if (status === "friends") await zend.people.chat({ appUserId: player.appUserId });
+```

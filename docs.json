@@ -34,11 +34,12 @@
             "pages": [
               "concepts",
               "guides/manifest",
+              "guides/app-icon",
               "guides/identity",
               "guides/interactions",
               "guides/cards",
               "guides/live-rooms",
-              "guides/people-picker",
+              "guides/people",
               "guides/screen"
             ]
           },
@@ -50,6 +51,7 @@
               "money/requests-and-links",
               "money/splits",
               "money/allowance",
+              "money/unlock",
               "money/prizes",
               "money/verifying-payments"
             ]
@@ -57,7 +59,8 @@
           {
             "group": "Build anywhere",
             "pages": [
-              "pay-with-zend"
+              "pay-with-zend",
+              "bots"
             ]
           },
           {
@@ -79,7 +82,8 @@
           {
             "group": "Examples",
             "pages": [
-              "examples/coinflip"
+              "examples/coinflip",
+              "examples/owambe"
             ]
           }
         ]
@@ -118,6 +122,7 @@
             "group": "Commands",
             "pages": [
               "cli/apps",
+              "cli/bot",
               "cli/keys",
               "cli/config",
               "cli/payments",
@@ -177,5 +182,11 @@
     "socials": {
       "github": "https://github.com/zendfi"
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/guides/people-picker",
+      "destination": "/guides/people"
+    }
+  ]
 }

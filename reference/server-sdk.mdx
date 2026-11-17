@@ -31,7 +31,7 @@ Exchange the `appSession` from `zend.identity.get()` for the verified user.
 
 ```ts
 const user = await zend.verifySession(appSession);
-// { app_user_id, username, name, avatar, scopes, email?, address? }
+// { app_user_id, username, name, avatar, human_verified, scopes, email?, address? }
 ```
 
 See [Sign in with Zend](/guides/identity).
@@ -70,6 +70,58 @@ await zend.updateInteraction(id, {
 });
 ```
 
+## blockedPairs(appUserIds)
+
+Of 2–50 players, the pairs that must not share a room because one blocked the other. Pairs are sorted, so you can't tell who blocked whom.
+
+```ts
+const { pairs } = await zend.blockedPairs(["zu_…", "zu_…", "zu_…"]);
+```
+
+See [Keep blocked people apart](/guides/people#keep-blocked-people-apart).
+
+## createListing(params)
+
+Puts an item on sale for [pay-to-read](/money/unlock). Needs the `unlock` permission.
+
+```ts
+const listing = await zend.createListing({
+  item: "issue-42",
+  title: "The Lagos Dispatch, issue 42",
+  price: { ngn: 500 },                  // or amount_usd
+  to: "@ada",                           // or "app"
+  splits: [{ to: "app", percent: 10 }],
+});
+```
+
+Returns the listing. A `202 { status: "pending" }` means send the same request again shortly.
+
+## getListing(item) / updateListing(item, params)
+
+```ts
+await zend.getListing("issue-42");
+await zend.updateListing("issue-42", { active: false });
+await zend.updateListing("issue-42", { to: "@ada", price: { ngn: 800 }, splits: [{ to: "app", percent: 10 }] });
+```
+
+To reprice, give `to`, the price and `splits` together.
+
+## hasAccess(item, appUserId)
+
+```ts
+const { unlocked } = await zend.hasAccess("issue-42", "zu_…");
+```
+
+Whether that person holds a receipt for the item right now, checked on Sui. A purchase made through Zend in the last few minutes counts straight away.
+
+## requireAccess(appSession, item)
+
+```ts
+const user = await zend.requireAccess(req.header("x-zend-session")!, "issue-42");
+```
+
+`verifySession` plus `hasAccess` in one call. Returns the verified user when they hold a receipt. Throws an error with `code: "NO_ACCESS"` and `status: 403` when they don't. See [Serve the content](/money/unlock#2-serve-the-content-server).
+
 ## getPrize(id)
 
 The prize and every joined player's `address` and `app_user_id`.
@@ -98,6 +150,21 @@ Returns `true` when an attestation receipt's hash and Zend's signature are valid
 ## resolverKeyFromSeed(seedHex)
 
 Returns `{ privateKey, publicKeyHex }` for a 32-byte hex seed. `publicKeyHex` is the value for `resolverKey` in your manifest. `zend apps resolver-key` does this for you.
+
+## UNLOCK_SEAL and unlockIdentity(listingId, suffix?)
+
+For encrypted content, [coming later](/money/unlock#encrypted-content-coming-later). Seal settings and the identity to encrypt pay-to-read content under:
+
+```ts
+import { UNLOCK_SEAL, unlockIdentity } from "@zendfi/appkit/server";
+
+UNLOCK_SEAL.packageId;     // Zend's unlock package on Sui mainnet
+UNLOCK_SEAL.committee;     // Seal's mainnet committee; use threshold 1
+UNLOCK_SEAL.aggregatorUrl;
+unlockIdentity(listing.listing_id, "chapter-2"); // hex, no 0x
+```
+
+Not needed for pay-to-read today.
 
 ## prizeResultMessage(prizeId, winners, amounts, correction?)
 

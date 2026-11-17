@@ -31,7 +31,7 @@ Three layers. Every page, pitch and screen should map to one of them.
 | Layer | What it is | Consumer copy | Developer copy | Proof in the product |
 |---|---|---|---|---|
 | **People** | @names and one Zend identity | "Just @theirname." | Sign in with Zend. One stable ID per person across every app. No sign-up screen to build. | `identity.get`, `verifySession`, people picker |
-| **Money** | Send, ask, money links, splits, prizes | "Send to anyone in seconds. No fees." | Payments, ask links, money links, splits, prizes and spend allowances, priced in Naira. Zend draws every money screen. | `pay`, `request`, `createLink`, `splits`, `prize.*`, `allowance` |
+| **Money** | Send, ask, money links, splits, prizes, pay-to-read | "Send to anyone in seconds. No fees." | Payments, ask links (payable by bank transfer), money links, splits, prizes, pay-to-read and spend allowances, shown in each person's own currency. Zend draws every money screen. | `pay`, `request`, `createLink`, `splits`, `prize.*`, `unlock.*`, `allowance` |
 | **Reach** | Chats, feed, Discover, and links that work anywhere | "Send it as a link. They don't need Zend yet." | Two ways to build: inside Zend (ZApps in chats, the feed and Discover) or anywhere (Pay with Zend links that open in the app or the web). | chat actions, cards, `/apps/<slug>`, `/i/<id>`, `zdfi.me` links |
 
 Supporting proof points for developers:

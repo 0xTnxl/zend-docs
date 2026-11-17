@@ -37,11 +37,13 @@ Read from the URL once, on load.
 | `start` | A card's `start_interaction` button opened the app; the type to start |
 | `from` | With `start`: the interaction whose card was tapped, to reuse its people |
 
+Other query parameters on your app link, such as `?room=KQ7M2D`, reach your entry page too. See [Room links](/guides/people#room-links).
+
 ## Identity
 
 ### identity.get()
 
-Returns `{ appUserId, username, name, scopes, appSession }`. See [Sign in with Zend](/guides/identity).
+Returns `{ appUserId, username, name, avatar, scopes, appSession }`. `avatar` is a URL or `null`, and older Zend apps leave it out. See [Sign in with Zend](/guides/identity).
 
 ## Money
 
@@ -185,14 +187,80 @@ interface LiveRoom {
 }
 ```
 
+## Pay-to-read
+
+Needs `unlock`. See [Pay-to-read](/money/unlock).
+
+### unlock.get(item)
+
+```ts
+unlock.get(item: string): Promise<{
+  item: string; title: string | null; unlocked: boolean; forSale: boolean;
+  price: { usd: number; ngn: number | null };
+}>
+```
+
+### unlock.buy(params)
+
+Shows Zend's confirm sheet with the price and every payee. `for` buys a copy for someone else: a `pick` token or `@username`.
+
+```ts
+unlock.buy(p: { item: string; for?: string }): Promise<{
+  item: string; paymentId: string; receiptId: string | null; status: "unlocked";
+}>
+```
+
+### unlock.gift(params)
+
+Gives the user's copy to someone else (`pick` token or `@username`). The user loses access.
+
+```ts
+unlock.gift(p: { item: string; to: string }): Promise<{ item: string; status: "gifted" }>
+```
+
+### unlock.read(params)
+
+Not available yet: opens Seal-encrypted content on the user's device. Until Zend turns it on, it fails with `UNLOCK_UNAVAILABLE`. Serve content from your server after [`requireAccess`](/reference/server-sdk#requireaccess-appsession-item) instead. See [Pay-to-read](/money/unlock).
+
+```ts
+unlock.read(p: { item: string; data: Uint8Array | ArrayBuffer }): Promise<{ data: Uint8Array; text: string | null }>
+```
+
 ## People
 
 ### people.pick(params?)
 
-Open Zend's friend picker. See [People picker](/guides/people-picker).
+Open Zend's friend picker. See [People picker](/guides/people).
 
 ```ts
 people.pick(p?: { max?: number; title?: string }): Promise<PickedPerson[]>
+```
+
+### people.connect(params)
+
+Adds someone the user was in an interaction with. Needs `connect`. No confirm sheet: call it only from the user's own tap. See [Add someone you met](/guides/people#add-someone-you-met).
+
+```ts
+people.connect(p: { appUserId: string; interactionId: string; note?: string }): Promise<{
+  status: "added" | "friends";
+  person: { appUserId: string; name: string; username: string | null; avatar: string | null };
+}>
+```
+
+### people.chat(params)
+
+Opens Zend's chat with this person over your app. Resolves when they close it. Needs `connect` and an existing chat.
+
+```ts
+people.chat(p: { appUserId: string }): Promise<{ opened: boolean }>
+```
+
+### share(params)
+
+Opens the phone's share sheet. `url` must be on your origins, your `https://app.usezend.app/apps/<slug>` link (query parameters allowed), or an `/i/int_…` link. See [Share a link](/guides/people#share-a-link).
+
+```ts
+share(p: { text: string; url?: string }): Promise<{ status: "shared" | "dismissed" | "copied" }>
 ```
 
 ## Fair results

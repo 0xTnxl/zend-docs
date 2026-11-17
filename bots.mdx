@@ -1,0 +1,133 @@
+---
+title: "Bot accounts"
+description: "Automated Zend accounts that your code runs, owned by you and labelled for everyone else."
+---
+
+A bot is a Zend account that code runs. It has its own @handle and its own signing key, and it belongs to you. Everyone else sees it marked **Automated**, never with the verified-person badge.
+
+<Warning>
+Bot accounts are in their first phase. Today a bot can sign in and read its own profile and limits (`GET /api/v1/bot/me`). Messaging, posting and money scopes can be requested now so keys keep working as they arrive, but nothing uses them yet.
+</Warning>
+
+## Before you start
+
+- You need a Zend account that has passed Zend's **verified person** check.
+- You can own up to 5 bots, and bots can't own bots.
+- Approving a bot needs you to confirm it's you in the Zend app.
+
+## Create a bot
+
+```bash
+zend bot create "Match Reminder" --handle matchbot --scopes read
+```
+
+<Steps>
+  <Step title="The CLI makes the bot's key">
+    The CLI generates the bot's signing key on your machine and saves it to `~/.zend/bots/<handle>.json` (mode `0600`). Only the bot's address is sent to Zend.
+  </Step>
+  <Step title="You approve it on your phone">
+    The CLI prints a link and a QR code. Open it in the Zend app, check the name, handle and what it will be able to do, tap **Make bot**, and confirm it's you. The request expires after 10 minutes.
+  </Step>
+  <Step title="The CLI saves the bot's API key">
+    Once approved, the CLI collects the bot's API key (`zbot_live_...`) once and saves it next to the signing key.
+  </Step>
+</Steps>
+
+```text
+$ zend bot create "Match Reminder" --handle matchbot
+
+Approve this bot in the Zend App:
+
+  https://zdfi.me/bot-auth/Xk3…
+
+Waiting for approval (expires 2026-11-17T14:32:00Z)...
+...
+@matchbot is ready. Its key is saved in /home/you/.zend/bots/matchbot.json.
+```
+
+| Option | Rules |
+|---|---|
+| `<name>` | 1–40 characters. Shown as the bot's name |
+| `--handle` | 3–20 characters of `a-z`, `0-9`, `.` and `_`, not starting or ending with `.` or `_`. Must be free |
+| `--scopes` | Comma-separated. Default `read` |
+
+| Scope | Allows | Status |
+|---|---|---|
+| `read` | Read its own profile and settings | Works now |
+| `dm_send` | Send messages | Reserved |
+| `post_card` | Post to the feed | Reserved |
+| `send_money` | Send money within the limits you set | Reserved |
+| `receive_money` | Receive money | Reserved |
+
+Scopes are fixed when you approve the bot.
+
+## Use the key
+
+```bash
+curl https://api.usezend.app/api/v1/bot/me \
+  -H "Authorization: Bearer $ZEND_BOT_KEY"
+```
+
+```json
+{
+  "id": "…",
+  "name": "Match Reminder",
+  "handle": "matchbot",
+  "avatar_url": null,
+  "scopes": ["read"],
+  "limits": {
+    "per_payment": 5,
+    "per_day": 20,
+    "recipient_allowlist": null,
+    "dm_first_contact": false
+  }
+}
+```
+
+Or from the CLI:
+
+```bash
+zend bot list          # bots on this machine
+zend bot me matchbot   # check it can sign in
+```
+
+- Each key lasts 90 days.
+- Each bot can make 60 requests a minute by default (`RATE_LIMITED` past that).
+- A paused bot gets `403 BOT_SUSPENDED`.
+
+## Limits you set
+
+Every bot has limits that apply whenever it acts without a person present. They're in US dollars.
+
+| Limit | Default |
+|---|---|
+| Per payment | $5 |
+| Per day | $20 (never below the per-payment limit, at most $100,000) |
+| Who it can pay | Anyone (`recipient_allowlist: null`), or a list of @handles |
+| Message people it hasn't talked to before | Off |
+| Requests a minute | 60 (1–600) |
+
+Raising a money limit, widening who it can pay, or turning on first-contact messages needs you to confirm it's you. You can also pause and resume a bot.
+
+## Keep the keys safe
+
+- The signing key in `~/.zend/bots/<handle>.json` controls the bot's account. Zend never sees it and can't recover it.
+- Treat the `zbot_live_` key like a password. Don't commit it or send it to a browser.
+- There's no way to issue a new key for an existing bot yet. Back up the bot file.
+
+## Errors
+
+| Code | Meaning |
+|---|---|
+| `INVALID_NAME` / `INVALID_HANDLE` / `INVALID_SCOPE` | Fix the request |
+| `HANDLE_TAKEN` | Pick another handle |
+| `NEEDS_HUMAN_CHECK` | Pass the verified person check in the Zend app first |
+| `TOO_MANY_BOTS` | You already own 5 bots |
+| `NOT_ALLOWED` | This kind of account can't make bots |
+| `STEP_UP_REQUIRED` | Confirm it's you, then approve again |
+| `SESSION_NOT_PENDING` | The request expired or was already answered. Run `zend bot create` again |
+| `SESSION_INVALIDATED` | The key was already collected |
+| `INVALID_API_KEY` | Missing, wrong or expired `zbot_live_` key |
+| `INSUFFICIENT_SCOPE` | The key doesn't have the scope for this call |
+| `BOT_SUSPENDED` | You paused the bot |
+| `RATE_LIMITED` | Over the bot's requests a minute |

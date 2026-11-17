@@ -1,0 +1,186 @@
+---
+title: "Pay-to-read"
+description: "Sell articles, chapters or files. People pay once, get a receipt, and your server serves them the content."
+---
+
+`zend.unlock` lets you sell content: articles, chapters, guides, files. Your server puts an item on sale. A person buys it in your page and gets a receipt in the same payment. Your server checks the receipt and sends them the content.
+
+Receipts live on Sui, so whoever holds one can read, including a friend it was given to. Zend never holds or sees your content.
+
+Needs the `unlock` permission in your manifest.
+
+## How it works
+
+<Steps>
+  <Step title="Your server lists the item">
+    Zend creates a listing on Sui with the price and who gets paid (up to 4 people, for example the writer and your app).
+  </Step>
+  <Step title="Someone buys it in your page">
+    `zend.unlock.buy` shows Zend's confirm sheet with the price and every payee. One payment pays each of them and gives the buyer a receipt, in the same transaction. Either both happen or neither does.
+  </Step>
+  <Step title="Your server checks the receipt and serves the content">
+    Your page asks your server for the content and sends the person's `appSession`. Your server calls `requireAccess` and sends the content only if they hold a receipt.
+  </Step>
+</Steps>
+
+## 1. List an item (server)
+
+```ts
+import { ZendServer } from "@zendfi/appkit/server";
+
+const zend = new ZendServer(process.env.ZEND_APP_KEY!);
+
+const listing = await zend.createListing({
+  item: "issue-42",
+  title: "The Lagos Dispatch, issue 42",
+  price: { ngn: 500 },                  // or amount_usd
+  to: "@ada",                           // gets what the splits leave
+  splits: [{ to: "app", percent: 10 }], // your payout account
+});
+```
+
+| Field | Rules |
+|---|---|
+| `item` | Your own id. 1–64 characters of `A-Z a-z 0-9 - _ . :`. Unique per app |
+| `title` | Optional, up to 120 characters |
+| `amount_usd` / `price.ngn` | One of them. Naira from 1 to 10,000,000. At most your tier's payment size |
+| `to` | `"app"` (your [payout account](/money/splits#your-app’s-payout-account)) or `"@username"`. Gets what the splits leave |
+| `splits` | Up to 3, same rules as [split payments](/money/splits): each `percent` or `amount_usd`, each part at least $0.01, each person once |
+
+Returns `201` with the listing:
+
+```json
+{
+  "item": "issue-42",
+  "title": "The Lagos Dispatch, issue 42",
+  "listing_id": "0x…",
+  "price_usd": 0.33,
+  "price_ngn": 500,
+  "parts": [
+    { "to": "zu_…", "label": "Ada", "amount_usd": 0.30 },
+    { "to": "zu_…", "label": "The Dispatch", "amount_usd": 0.03 }
+  ],
+  "active": true,
+  "sold": 0,
+  "verify": { "package": "0x…", "listing": "0x…" }
+}
+```
+
+<Note>
+A `202` with `status: "pending"` means the listing is still being confirmed. Send **exactly the same request** again in a moment. Changing the price or payees between the two calls can leave two listings.
+</Note>
+
+Listing an item that already exists returns `409 ITEM_EXISTS` with the existing listing in `listing`. Each app can list up to 100 items a day.
+
+### Change a listing
+
+```ts
+await zend.updateListing("issue-42", { active: false });   // pause
+await zend.updateListing("issue-42", { active: true });    // resume
+await zend.updateListing("issue-42", {                     // reprice
+  to: "@ada",
+  price: { ngn: 800 },
+  splits: [{ to: "app", percent: 10 }],
+});
+```
+
+- To reprice, send `to`, the price and `splits` together. Leaving out `splits` removes them, including your app's share.
+- People who already bought keep their receipts.
+- Pausing stops new sales. People who bought can still read and gift their copy.
+- `getListing(item)` returns the current listing.
+
+## 2. Serve the content (server)
+
+Keep the content wherever you like: your database, your storage, a private bucket. Serve it from an endpoint that checks the receipt first:
+
+```ts
+app.get("/content/:item", async (req, res) => {
+  try {
+    await zend.requireAccess(req.header("x-zend-session")!, req.params.item);
+    res.send(await loadArticle(req.params.item));
+  } catch (e: any) {
+    res.status(e.status ?? 500).json({ error: e.code });
+  }
+});
+```
+
+`requireAccess(appSession, item)` verifies who's asking and checks they hold a receipt right now. It returns the verified user, or throws `NO_ACCESS` (status 403).
+
+`appSession` lasts 10 minutes. If your app already [signs people in on your server](/guides/identity), check each item with `hasAccess` instead:
+
+```ts
+const { unlocked } = await zend.hasAccess(req.params.item, session.appUserId);
+if (!unlocked) return res.status(403).json({ error: "NO_ACCESS" });
+```
+
+- Access follows the receipt. A friend you give your copy to can read; you can't any more.
+- A purchase made in the last few minutes counts straight away, even before Sui's index catches up.
+- Don't put the content in a public URL. Anyone who has the URL can read it.
+
+## 3. Sell it (page)
+
+```ts
+import { init } from "@zendfi/appkit";
+const zend = init();
+
+const item = await zend.unlock.get("issue-42");
+// { item, title, unlocked, forSale, price: { usd, ngn } }
+if (!item.unlocked) await zend.unlock.buy({ item: "issue-42" });
+
+const { appSession } = await zend.identity.get();
+const r = await fetch("/content/issue-42", { headers: { "x-zend-session": appSession } });
+article.innerHTML = sanitize(await r.text());
+```
+
+- `buy` returns `{ item, paymentId, receiptId, status: "unlocked" }`. `receiptId` can be `null` if Zend hasn't seen the receipt yet; the purchase still went through.
+- Call `identity.get()` for each request: it returns a fresh `appSession`.
+
+### Gifts
+
+```ts
+const [friend] = await zend.people.pick({ max: 1, title: "Give it to" });
+
+await zend.unlock.buy({ item: "issue-42", for: friend.pick });  // buy a copy for them
+await zend.unlock.gift({ item: "issue-42", to: friend.pick });  // or give yours away
+```
+
+`for` and `to` take a `pick` token or an `@username`. Whoever holds the receipt can read. When you give your copy away, you lose access.
+
+## Webhooks
+
+| Event | `data` |
+|---|---|
+| `unlock.listed` | The listing (as above) |
+| `unlock.bought` | `{ item, listing_id, receipt_id, payment_id, by, for, amount_usd, transaction_id }` |
+| `unlock.gifted` | `{ item, listing_id, receipt_id, from, to, transaction_id }` |
+
+A purchase also sends `payment.completed` with each part in `parts`. Changing a listing sends no webhook.
+
+## Errors
+
+| Code | Meaning |
+|---|---|
+| `ITEM_NOT_FOUND` | No listing with that `item` |
+| `ITEM_EXISTS` | Already listed. `PATCH` it instead |
+| `INVALID_ITEM` / `TITLE_TOO_LONG` | Fix the item id or title |
+| `INVALID_PAYEE` | `to` must be `"app"` or `"@username"` |
+| `INVALID_UPDATE` | Repricing needs `to`, the price and `splits` together |
+| `NOT_FOR_SALE` | The listing is paused |
+| `ALREADY_UNLOCKED` | They (or the friend) already have it |
+| `OWN_ITEM` | The buyer is one of the payees |
+| `NOT_UNLOCKED` / `NO_ACCESS` | No receipt for this item. `requireAccess` throws `NO_ACCESS` with status 403 |
+| `SAFETY_STOP` | Zend refused to confirm what was prepared. Nothing moved |
+| `APP_LIMIT_AMOUNT` / `APP_LIMIT_DAILY` | Your [tier's](/ship/limits) payment limits |
+| `APP_PAYOUT_NOT_SET` / `SPLIT_INVALID` / `RATE_CHANGED` | See [Split payments](/money/splits) and [Errors](/reference/errors) |
+
+## Costs
+
+The buyer pays the price and nothing else. Listing, changing a listing, each purchase and each gift come out of your app's monthly [network budget](/ship/limits#network-budget). Opening content costs nothing.
+
+## Check it yourself
+
+The listing (`verify.listing`) shows the price and payees on Sui, and the package (`verify.package`) is public. Each receipt is an object on Sui owned by the person who holds it.
+
+## Encrypted content (coming later)
+
+Zend will also be able to open encrypted content on the person's device with [Seal](https://seal-docs.wal.app), so you can store it encrypted anywhere, even somewhere public, and only receipt holders can open it. `zend.unlock.read`, `UNLOCK_SEAL` and `unlockIdentity` are for that. Until it's turned on, `unlock.read` fails with `UNLOCK_UNAVAILABLE`; serve content from your server as above.

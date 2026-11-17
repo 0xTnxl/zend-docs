@@ -3,7 +3,7 @@ title: "Pay with Zend"
 description: "Take payments from any website or backend with a Zend payment link."
 ---
 
-Pay with Zend lets any website, backend or script ask for money on the Zend network. You create a payment request; Zend gives you a link. On a phone with Zend, the link opens Zend's own confirm sheet. Everywhere else it opens web checkout at `zdfi.me`. It's the same link either way.
+Pay with Zend lets any website, backend or script ask for money on the Zend network. You create a payment request; Zend gives you a link, `https://app.usezend.app/a/<id>`. On a phone with Zend it opens Zend's own confirm sheet, and anywhere else it opens Zend on the web. Payers can pay from their Zend balance, or from a Nigerian bank account if they have nothing in their Zend yet.
 
 Money settles to your own Zend account. There's no separate merchant account.
 
@@ -34,7 +34,7 @@ const payment = await zend.createZendPayment({
   redirectUrl: "https://yourapp.com/checkout/return",
 });
 
-console.log(payment.linkUrl); // https://zdfi.me/@yourname/abc123def0
+console.log(payment.linkUrl); // https://app.usezend.app/a/abc123def0
 ```
 
 ```python Python
@@ -64,6 +64,8 @@ go get github.com/zendfi/zend-go-sdk
 | `webhookUrl` | `https`. Overrides your account's webhook URL for this request |
 
 Send `payment.linkUrl` to your customer, or put it behind a **Pay with Zend** button.
+
+The link is an [ask link](/money/requests-and-links#ask-links) that can be paid once. Cancelling the request closes it, and paying the request another way closes it too. Older accounts that aren't set up for links yet get a `zdfi.me` link instead, which works the same way for payers.
 
 Needs the `create_payment_request` scope.
 
@@ -112,6 +114,8 @@ const { valid } = await zend.verifyReturnToken({
 ```
 
 Tokens are single-use and expire after 5 minutes. Every failure returns `valid: false`, with no reason given.
+
+A payer who pays by bank transfer finishes on Zend's own screen and isn't sent back with a token. Always confirm on the webhook.
 
 ## Check without charging
 

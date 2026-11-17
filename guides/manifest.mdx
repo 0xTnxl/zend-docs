@@ -5,6 +5,8 @@ description: "Every field in zapp.json and the rules Zend checks when you deploy
 
 The manifest tells Zend where your app lives, what it may do, and how its interactions behave. Keep it in your repo as `zapp.json` and deploy it with [`zend apps deploy`](/cli/apps#deploy).
 
+Your app's icon isn't part of the manifest; [upload it separately](/guides/app-icon).
+
 Each upload creates a new version and makes it active. Zend checks the whole file and returns every problem at once as `422 INVALID_MANIFEST` with an `errors[]` list. Unknown fields are rejected at every level, so a typo fails loudly instead of being ignored.
 
 ## Example
@@ -125,13 +127,19 @@ Each upload creates a new version and makes it active. Zend checks the whole fil
 | `request_payment` | [`request`](/money/requests-and-links) | Each request |
 | `create_link` | [`createLink`](/money/requests-and-links) | Each link |
 | `prize` | [`prize.*`](/money/prizes) | Each prize |
+| `unlock` | [`unlock.*`](/money/unlock) and the server unlock endpoints | Each purchase or gift |
 | `attest` | [`attest`](/fairness/attestations) | None |
+| `connect` | [`people.connect`, `people.chat`](/guides/people) | None. Only call it from the user's own tap; Zend confirms afterwards |
 | `email` | `email` from [`verifySession`](/guides/identity) | "See your email" toggle |
 | `wallet_address` | `address` from `verifySession` | "Can send money straight to you" toggle |
 | `contacts` | Reserved | "See people you choose to share" toggle |
 | `update_bubble` | Reserved | None |
 
 Consent toggles start off. Users can change them later in **Settings → Connected apps**.
+
+## App icon
+
+Your icon isn't part of the manifest. Upload the image with `zend apps icon <slug> ./icon.png`. See [App icon](/guides/app-icon).
 
 ## chatActions
 

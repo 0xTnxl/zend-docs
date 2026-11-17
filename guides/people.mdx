@@ -1,0 +1,122 @@
+---
+title: "People and friends"
+description: "Pick friends, add people you met in your app, open chats, and share room links."
+---
+
+Zend gives your app the people on the network without handing you anyone's friend list or chats. Every call here goes through Zend's own screens.
+
+| Call | What it does | Permission |
+|---|---|---|
+| [`people.pick`](#pick-friends) | Zend's friend picker. You get only who was chosen | None |
+| [`people.connect`](#add-someone-you-met) | Add someone the user was just in an interaction with | `connect` |
+| [`people.chat`](#open-a-chat) | Open Zend's chat with someone, on top of your app | `connect` |
+| [`share`](#share-a-link) | The phone's share sheet, for your links | None |
+| [`blockedPairs`](#keep-blocked-people-apart) (server) | Who must not be matched together | None |
+
+## Pick friends
+
+`zend.people.pick` opens Zend's friend picker. You get back only the people the user chose.
+
+```ts
+const picked = await zend.people.pick({ title: "Who do you want to play?", max: 3 });
+if (picked.length === 0) return; // the user backed out
+
+const game = await zend.interaction.create({
+  type: "challenge",
+  participants: picked.map((p) => p.pick),
+});
+```
+
+Each result is `{ appUserId, name, username, avatar, pick }`. Pass `pick` as a participant to `interaction.create`, or to `unlock.buy` and `unlock.gift`. It works even for people who haven't opened your app yet.
+
+| Param | Notes |
+|---|---|
+| `title` | Heading on the picker |
+| `max` | 1–50. Default 1 |
+
+## Add someone you met
+
+`zend.people.connect` adds someone the user was in an interaction with. Use it for "Add" buttons after a game with strangers.
+
+```ts
+const { status, person } = await zend.people.connect({
+  appUserId: ada.appUserId,
+  interactionId: round.id,
+  note: "Met in Room KQ7M2D",
+});
+// status: "added" or "friends"
+```
+
+What happens:
+
+- The first add starts a Zend chat between the two people with a line like "Tunde added Ada on Owambe Rooms. Met in Room KQ7M2D." Zend notifies Ada.
+- When Ada adds Tunde back, the call returns `"friends"` and the chat says "Ada added Tunde back. You're friends now."
+- Zend shows "Added {name}." (or "You and {name} are friends now.") with a **Chat** button.
+- Calling it again for the same pair changes nothing and returns the current status.
+- Your server gets a [`people.connected`](/reference/webhooks) webhook for each new add.
+
+<Warning>
+There's no confirm sheet. Call `connect` only from the user's own tap on a button that clearly says what it does.
+</Warning>
+
+Rules:
+
+- The interaction must be your app's and created in the last 7 days. Both people must be in it.
+- Each user can add 30 people an hour in your app (`CONNECT_LIMIT`).
+- `note` is optional: one line, up to 80 characters, no links, and plain words (no crypto terms). Otherwise `INVALID_NOTE`.
+- If either person blocked the other, the call fails with `BLOCKED`. It never says who blocked whom.
+
+| Error | Meaning |
+|---|---|
+| `INTERACTION_NOT_FOUND` | Not your app's interaction, or older than 7 days |
+| `NOT_A_PARTICIPANT` | The user isn't in the interaction |
+| `PERSON_NOT_FOUND` | That person wasn't in the interaction |
+| `CANNOT_ADD_YOURSELF` | That's the user |
+| `BLOCKED` | One of them blocked the other. Don't say which |
+| `INVALID_NOTE` / `CONNECT_LIMIT` | See the rules above |
+
+## Open a chat
+
+```ts
+await zend.people.chat({ appUserId: ada.appUserId });
+// resolves { opened: true } when the user closes the chat
+```
+
+Zend opens its own chat with that person over your app. Your page never sees chat ids or messages. The two people need an existing chat, for example after `people.connect`; otherwise the call fails with `NO_CHAT`. It also fails with `BLOCKED` if either blocked the other, and `BUSY` if a chat is already open.
+
+## Share a link
+
+`zend.share` opens the phone's share sheet.
+
+```ts
+const { status } = await zend.share({
+  text: "Come and play",
+  url: "https://app.usezend.app/apps/owambe?room=KQ7M2D",
+});
+// "shared", "dismissed", or "copied" where the device has no share sheet
+```
+
+- `text` is 1–280 characters.
+- `url` is optional. It must be on your origins, your app link `https://app.usezend.app/apps/<slug>`, or an interaction link `https://app.usezend.app/i/int_…`. Anything else fails with `INVALID_URL`.
+
+### Room links
+
+Your app link keeps its query parameters through sign-in, so a link like `https://app.usezend.app/apps/owambe?room=KQ7M2D` opens your entry page with `?room=KQ7M2D`. Read it from `location.search` as usual.
+
+- Up to 8 parameters are kept.
+- Keys must match `[a-z][a-z0-9_]{0,31}`. Values are up to 256 characters.
+- `interaction`, `start` and `from` are dropped, because Zend sets those itself (see [`zend.launch`](/reference/client-sdk#zend-launch)).
+- Invalid parameters are dropped silently.
+
+## Keep blocked people apart
+
+If your server matches strangers into rooms, ask Zend which of them must not share one:
+
+```ts
+const { pairs } = await zend.blockedPairs(["zu_…", "zu_…", "zu_…"]);
+// [["zu_a…", "zu_c…"]]: don't seat these two together
+```
+
+- Send 2–50 `appUserId`s.
+- Each pair is sorted, so you can't tell who blocked whom.
+- People who haven't connected your app are ignored.

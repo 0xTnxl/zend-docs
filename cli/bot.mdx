@@ -1,0 +1,39 @@
+---
+title: "zend bot"
+description: "Create and check bot accounts."
+---
+
+Bot accounts are Zend accounts that your code runs. See [Bot accounts](/bots) for what they can do and the limits you set.
+
+## create
+
+```bash
+zend bot create "<Name>" --handle <handle> [--scopes read,dm_send]
+```
+
+Generates the bot's signing key locally, asks you to approve the bot in the Zend app, then saves its API key. Everything is stored in `~/.zend/bots/<handle>.json` with mode `0600`. Only the bot's address is sent to Zend.
+
+`create` doesn't need `zend login`. You approve it on your phone instead, which needs a Zend account that has passed the verified person check.
+
+If you deny the request or it expires, the local file stays without an API key, and `create` refuses that handle until you delete the file.
+
+## list
+
+```bash
+zend bot list
+```
+
+```text
+@matchbot  Match Reminder  ready
+@helper    Helper          waiting for approval
+```
+
+Lists the bots saved on this machine.
+
+## me
+
+```bash
+zend bot me <handle>
+```
+
+Calls `GET /api/v1/bot/me` with the bot's key and prints its profile, scopes and limits.

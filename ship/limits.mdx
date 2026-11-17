@@ -30,7 +30,7 @@ You can lower the card cap with `limits.cardsPerUserPerDay` in the manifest. Oth
 
 ## Network budget
 
-Zend pays the network cost of your app's money links, prizes, joins and random draws, up to a monthly budget per tier:
+Zend pays the network cost of your app's money links, prizes, joins, random draws and pay-to-read listings, purchases and gifts, up to a monthly budget per tier:
 
 | Tier | Monthly budget | About this many collected links |
 |---|---|---|
@@ -38,7 +38,7 @@ Zend pays the network cost of your app's money links, prizes, joins and random d
 | public | 50 SUI | 11,000 |
 | growth | 500 SUI | 110,000 |
 
-Past the budget, new links, prizes, joins and draws fail with `APP_GAS_BUDGET` until the 1st of the month (UTC). Collecting, taking back, results and payouts always go through. Plain sends and `pay` cost nothing and aren't counted.
+Each person can use at most 5% of your app's monthly budget. Past the budget, new links, prizes, joins, draws and pay-to-read actions fail with `APP_GAS_BUDGET` until the 1st of the month (UTC). Collecting, taking back, results and payouts always go through. Plain sends and `pay` cost nothing and aren't counted.
 
 Track usage with:
 
@@ -60,3 +60,8 @@ zend apps info <slug>
 | Draws per interaction | 50 |
 | Live room messages | 8 KB each, 20 a second per person |
 | Bridge call timeout | 10 minutes (`TIMEOUT`) |
+| People added with `people.connect` | 30 an hour per user (`CONNECT_LIMIT`) |
+| Pay-to-read listings | 100 a day per app |
+| Pay-to-read `read` | 300 an hour per user, 10 MB per call |
+| Bank transfers to ask links | 10 an hour per payer, from $0.50 |
+| Bot accounts | 5 per owner, 60 requests a minute each by default |

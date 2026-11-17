@@ -3,12 +3,12 @@ title: "zend apps"
 description: "Create, check, deploy and manage ZApps."
 ---
 
-All `zend apps` commands use the key saved by [`zend login`](/cli/login). `deploy` can also use `ZEND_APP_KEY` from the environment.
+All `zend apps` commands use the key saved by [`zend login`](/cli/login). `deploy` and `icon` can also use `ZEND_APP_KEY` from the environment.
 
 ## create
 
 ```bash
-zend apps create <slug> "<Name>"
+zend apps create <slug> "<Name>" [--icon <file>]
 ```
 
 Creates a private ZApp and prints its credentials once:
@@ -24,6 +24,8 @@ Next: zend apps deploy zapp.json
 ```
 
 Slugs are 2–31 characters of `a-z`, `0-9` and `-`. You can have up to 10 apps.
+
+`--icon` uploads your [app icon](/guides/app-icon) straight after creating the app.
 
 ## list
 
@@ -77,13 +79,33 @@ With `visibility: "public"`, the status becomes `in_review`. Track it with `zend
 
 If `ZEND_APP_KEY` is set, `deploy` uses it instead of your login. Use this in CI.
 
+## icon
+
+```bash
+zend apps icon <slug> <file>
+```
+
+Uploads your [app icon](/guides/app-icon): a square PNG, JPEG or WebP, at least 256 × 256, up to 1 MB. The CLI checks the file type and size before uploading; Zend checks the rest.
+
+```text
+Icon is live: https://media.zendfi.app/zapps/6b0f.../3f9a1c2e.png
+```
+
+For a public app, the new icon waits for review and your current one stays until then:
+
+```text
+Icon uploaded. It shows once Zend reviews it; your current icon stays until then.
+```
+
+If `ZEND_APP_KEY` is set, `icon` uses it instead of your login.
+
 ## info
 
 ```bash
 zend apps info <slug> [--json]
 ```
 
-Shows the app's id, status, visibility, tier, manifest version, this month's [network budget](/ship/limits#network-budget), and the latest review.
+Shows the app's id, status, visibility, tier, manifest version, icon (and any new icon waiting for review), this month's [network budget](/ship/limits#network-budget), and the latest review.
 
 ## review
 

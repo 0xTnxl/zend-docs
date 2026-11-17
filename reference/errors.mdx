@@ -38,6 +38,8 @@ try {
 | `SLUG_TAKEN` | Pick another slug |
 | `INVALID_APP` | Fix the slug or name |
 | `APP_LIMIT` | You already have 10 apps |
+| `ICON_*` | The icon was refused. See [App icon](/guides/app-icon#errors) |
+| `ICON_URL_NOT_ACCEPTED` | Upload the icon instead of linking it |
 | `INVALID_API_KEY` | Wrong or missing `zapp_sk_` key |
 | `INVALID_APP_SESSION` / `GRANT_REVOKED` | Ask the page for a fresh `appSession`, or treat the user as signed out |
 | `APPKIT_UNAVAILABLE` | Zend-side outage. Retry later |
@@ -55,6 +57,7 @@ try {
 | `APP_GAS_BUDGET` | Monthly network budget used up. New links, prizes, joins and draws resume on the 1st (UTC) |
 | `SPLIT_INVALID` | Fix the [splits](/money/splits) |
 | `APP_PAYOUT_NOT_SET` | Run `zend apps payout <slug> <username>` |
+| `RATE_CHANGED` | The Naira rate moved since you priced. Price again |
 | `PAYMENT_MISMATCH` / `TICKET_EXPIRED` | Zend couldn't confirm the payment matched what you asked for. Nothing was recorded; ask the user to try again |
 
 ## Interactions
@@ -81,6 +84,32 @@ try {
 | `POSTING_NOT_ALLOWED` / `APP_MUTED` | The user didn't allow posting, or muted your app |
 | `CARD_LIMIT` | Daily cap reached |
 | `CHAT_NEEDS_TWO` / `NOTHING_TO_SHOW` | The placement doesn't fit the interaction |
+
+## People and sharing
+
+| Code | Meaning / what to do |
+|---|---|
+| `PERSON_NOT_FOUND` | They weren't in that interaction |
+| `CANNOT_ADD_YOURSELF` | That's the user |
+| `BLOCKED` | One of them blocked the other. Don't say which |
+| `INVALID_NOTE` | Note over 80 characters, more than one line, has a link, or isn't plain language |
+| `CONNECT_LIMIT` | 30 adds an hour reached |
+| `NO_CHAT` | No chat with them yet. Call `people.connect` first |
+| `INVALID_URL` | The shared link isn't on your origins or your Zend app link |
+| `BUSY` | A chat or share sheet is already open |
+
+## Pay-to-read
+
+| Code | Meaning / what to do |
+|---|---|
+| `ITEM_NOT_FOUND` / `ITEM_EXISTS` | No listing with that item, or it's already listed (`PATCH` it) |
+| `INVALID_ITEM` / `TITLE_TOO_LONG` / `INVALID_PAYEE` / `INVALID_UPDATE` | Fix the listing request |
+| `NOT_FOR_SALE` | The listing is paused |
+| `ALREADY_UNLOCKED` / `OWN_ITEM` | They have it already, or the buyer is a payee |
+| `NOT_UNLOCKED` / `NO_ACCESS` / `WRONG_ITEM` | No receipt, or the bytes are for another listing |
+| `TOO_LARGE` | Over 10 MB for one `read` |
+| `UNLOCK_UNAVAILABLE` / `UNAVAILABLE` | Try later |
+| `SAFETY_STOP` | Zend refused to confirm what was prepared. Nothing moved |
 
 ## Draws and live rooms
 

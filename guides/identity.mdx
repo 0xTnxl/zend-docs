@@ -12,7 +12,7 @@ import { init } from "@zendfi/appkit";
 
 const zend = init();
 const me = await zend.identity.get();
-// { appUserId: "zu_...", username: "tunde", name: "Tunde", scopes: ["profile"], appSession: "..." }
+// { appUserId: "zu_...", username: "tunde", name: "Tunde", avatar: "https://…", scopes: ["profile"], appSession: "..." }
 ```
 
 | Field | Notes |
@@ -20,6 +20,7 @@ const me = await zend.identity.get();
 | `appUserId` | `zu_...`. Stable across every ZApp and across username changes. Use it as your user key |
 | `username` | `null` until the user picks one |
 | `name` | Display name |
+| `avatar` | Profile photo URL, or `null`. Older Zend apps leave it out |
 | `scopes` | What the user has granted your app |
 | `appSession` | Short-lived token for your server. Valid for 10 minutes |
 
@@ -64,6 +65,7 @@ curl -X POST https://api.usezend.app/api/zend/v2/apps/token/verify \
   "username": "tunde",
   "name": "Tunde",
   "avatar": null,
+  "human_verified": true,
   "scopes": ["profile", "email"],
   "email": "t@example.com",
   "address": "0x..."
@@ -71,6 +73,8 @@ curl -X POST https://api.usezend.app/api/zend/v2/apps/token/verify \
 ```
 
 `email` comes back only when the user granted `email`. `address` comes back only when they granted `wallet_address`.
+
+`human_verified` is `true` when the person has passed Zend's verified person check: a live face check that shows a real person controls the account. Use it to keep bonuses, votes or rankings to real people. It can turn `false` again, for example when the check expires after 24 months, so read it each time you verify a session. Bot accounts never have it.
 
 | Error | Meaning | What to do |
 |---|---|---|

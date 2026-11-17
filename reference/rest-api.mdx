@@ -37,7 +37,13 @@ Errors look like:
 | GET | `/apps/server/prizes/:id` | | The prize with `players` |
 | POST | `/apps/server/prizes/:id/resolve` | `{ winners, amounts, signature, correction }` | The prize. Use `resolvePrize` from the server SDK |
 | PUT | `/apps/server/manifest` | Manifest JSON | Deploys your own app's manifest. Used by `zend apps deploy` in CI |
+| PUT | `/apps/server/icon` | The image (`Content-Type: image/png`, `image/jpeg` or `image/webp`) | `{ status, icon_url }` or `{ status: "pending_review", pending_icon_url }`. See [App icon](/guides/app-icon) |
 | GET (WebSocket) | `/apps/server/live/:interaction_id/ws` | | A [live room](/guides/live-rooms#from-your-server) connection |
+| POST | `/apps/server/people/blocked` | `{ app_user_ids }` (2–50) | `{ pairs: [[a, b], …] }`. See [Keep blocked people apart](/guides/people#keep-blocked-people-apart) |
+| POST | `/apps/server/unlock/listings` | `{ item, title?, to, amount_usd? \| price: { ngn }, splits? }` | `201` the listing, or `202 { status: "pending" }`. See [Pay-to-read](/money/unlock) |
+| GET | `/apps/server/unlock/listings/:item` | | The listing |
+| PATCH | `/apps/server/unlock/listings/:item` | `{ active?, title?, to?, amount_usd?, price?, splits? }` | The listing |
+| GET | `/apps/server/unlock/access` | `?item=&user=zu_…` | `{ item, unlocked }` |
 
 `created_by` is `@username` or `zu_...`, and that user must have connected your app.
 
@@ -45,9 +51,10 @@ Errors look like:
 
 | Method | Path | Body | Notes |
 |---|---|---|---|
-| POST | `/apps` | `{ slug, name, icon_url? }` | Returns `api_key` and `webhook_secret` once. Max 10 apps per account |
+| POST | `/apps` | `{ slug, name }` | Returns `api_key` and `webhook_secret` once. Max 10 apps per account. Upload the icon separately |
 | GET | `/apps` | | Your apps |
 | PUT | `/apps/:id/manifest` | Manifest JSON | New version. `public` goes to `in_review` |
+| PUT | `/apps/:id/icon` | The image | Same as `/apps/server/icon`. See [App icon](/guides/app-icon) |
 | POST | `/apps/:id/testers` | `{ zendtag }` | The owner is always a tester |
 | POST | `/apps/:id/rotate` | `{ which: "api_key" \| "webhook_secret" \| "both" }` | New values, shown once. Old ones stop working immediately |
 | GET | `/apps/:id/review` | | Review status and findings |
@@ -63,6 +70,17 @@ Slugs are 2–31 characters of `a-z`, `0-9` and `-`.
 | GET | `/apps/attest/interactions/:id` | `{ receipts: [...] }` for an interaction |
 | GET | `/apps/listed` | Listed public apps |
 
+## Bot accounts
+
+| Credential | Method | Path | Notes |
+|---|---|---|---|
+| None (rate limited per IP) | POST | `/api/v1/bots/sessions` | `{ bot_name, handle, address, scopes? }`. Returns `{ session_id, approval_url, expires_at }` |
+| None | GET | `/api/v1/bots/sessions/:id` | `{ status }`: `pending`, `approved`, `denied` or `expired` |
+| None | POST | `/api/v1/bots/sessions/:id/key` | `{ api_key }`, once |
+| Bot key (`zbot_live_...`) | GET | `/api/v1/bot/me` | The bot's profile, scopes and limits |
+
+These paths start at `https://api.usezend.app`, not under `/api/zend/v2`. [`zend bot create`](/cli/bot) calls them for you. See [Bot accounts](/bots).
+
 ## Endpoints the Zend client uses
 
-`/apps/by-slug/:slug/*`, `/apps/interactions`, `/apps/cards`, `/apps/feed`, `/apps/prizes/*`, `/me/connected-apps` and the live room socket for users are called by the Zend app on your page's behalf. You reach them through the client SDK; don't call them directly.
+`/apps/by-slug/:slug/*` (including `unlock/*`), `/apps/interactions`, `/apps/cards`, `/apps/feed`, `/apps/prizes/*`, `/apps/people/connect`, `/apps/people/chat`, `/seal/*`, `/me/connected-apps` and the live room socket for users are called by the Zend app on your page's behalf. You reach them through the client SDK; don't call them directly.

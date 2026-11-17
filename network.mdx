@@ -10,8 +10,9 @@ The Zend app is one app on the Zend network. Your app is another. Both see the s
 Every person on Zend has an account and an @name.
 
 - **One ID in every app.** Your app sees each person as an `appUserId` (`zu_...`). It's the same in every ZApp and doesn't change when they change their @name, so you can use it as your user key.
+- **Real people, and labelled bots.** People who pass Zend's verified person check carry a badge, and your server sees it as `human_verified`. [Bot accounts](/bots) are always marked **Automated**.
 - **Consent per app.** The first time someone opens your app, Zend asks "Continue to {app} as {name}?". Email and the ability to pay them directly are separate toggles they can turn off later.
-- **No friend list for you to store.** The [people picker](/guides/people-picker) gives you only the people the user chose.
+- **Friends without a friend list.** The [people picker](/guides/people#pick-friends) gives you only the people the user chose, and [`people.connect`](/guides/people#add-someone-you-met) lets people who met in your app become friends in Zend.
 
 See [Sign in with Zend](/guides/identity).
 
@@ -21,7 +22,8 @@ Money on Zend moves between people's own accounts.
 
 - **Each person controls their own money.** Balances sit in accounts only their owner can move. Every payment is confirmed by its owner on their phone, in a screen Zend draws. Zend doesn't hold a pool of customer funds.
 - **Settles in seconds.** Payments settle on Sui. Users never pay network fees: plain sends and `pay` cost nothing, and Zend covers the network cost of your app's links and prizes up to a [monthly budget](/ship/limits#network-budget).
-- **Priced in Naira.** Every money call takes `price: { ngn }`. Zend converts at its current rate and shows ₦ to the user.
+- **Shown in each person's own currency.** Money is held and moved in dollars. Zend shows every amount in the person's own currency, chosen from where they signed up and changeable in **Settings → Currency**. You price in dollars (`amount`) or Naira (`price: { ngn }`); a Naira price shows in Naira.
+- **Payable by bank transfer.** Someone with nothing in their Zend yet can pay an [ask link](/money/requests-and-links#paying-by-bank-transfer) from a Nigerian bank account. The money goes straight to the link's owner.
 - **Money that travels as a URL.** A [money link](/money/requests-and-links#money-links) holds money until someone collects it. The key that unlocks it is made on the sender's phone and lives in the link itself, after the `#`, so Zend never sees it. Whatever isn't collected goes back to the sender at expiry.
 
 ## Reach

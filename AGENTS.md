@@ -7,7 +7,8 @@
 - Sources of truth:
   - ZApp SDK (`@zendfi/appkit`): the `zend-appkit` repo, `src/index.ts`, `src/server.ts` and `docs/`.
   - CLI (`pay-with-zend-cli`, command `zend`): the `zend-cli` repo, `src/commands/`.
-  - API behaviour: the Zend backend (`src/app_*.rs`, `src/app_manifest.rs`, routes in `src/main.rs`).
+  - API behaviour: the Zend backend (`src/app_*.rs`, `src/app_manifest.rs`, `src/bots.rs`, `src/zlinks.rs`, routes in `src/main.rs`).
+  - Client bridge behaviour (share, connect, unlock read, client-only errors): `zendapp/lib/src/features/zapps/zapp_bridge.dart`.
 - When the SDK or CLI changes, update the matching page here in the same change.
 
 ## Layout
@@ -18,6 +19,8 @@
 - `ship/`: public apps, limits, copy guide.
 - `reference/`: client SDK, server SDK, REST API, webhooks, errors.
 - `cli/`: one page per command group.
+- `pay-with-zend`, `bots`: building outside ZApps.
+- `examples/`: Coin Flip (no server) and Owambe Rooms (server-run rooms, connect).
 
 ## Positioning
 - Zend is "the money network for the internet". Developer line: "Build on the money network for the internet."

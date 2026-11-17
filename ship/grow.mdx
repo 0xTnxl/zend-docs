@@ -20,9 +20,15 @@ Post a [card](/guides/cards) when something happens. The other person sees it in
 
 ## Bring in people who aren't using your app yet
 
-- The [people picker](/guides/people-picker) returns `pick` tokens that work as participants even for people who've never opened your app.
+- The [people picker](/guides/people) returns `pick` tokens that work as participants even for people who've never opened your app.
 - `https://app.usezend.app/apps/<slug>` and `https://app.usezend.app/i/<id>` open your app for anyone, after they sign in to Zend if they need to.
 - A [money link](/money/requests-and-links#money-links) works for people who aren't on Zend at all. They sign up to collect it.
+- [`zend.share`](/guides/people#share-a-link) sends your app link through any messaging app. Add parameters like `?room=KQ7M2D` and they reach your entry page after sign-in.
+- Ask links can be paid [by bank transfer](/money/requests-and-links#paying-by-bank-transfer), so people with nothing in their Zend yet can still pay.
+
+## Turn strangers into friends
+
+If your app puts strangers together, let them add each other afterwards with [`people.connect`](/guides/people#add-someone-you-met). Each add starts a Zend chat that mentions your app, and a mutual add makes them friends. See [Owambe Rooms](/examples/owambe).
 
 ## Get listed
 

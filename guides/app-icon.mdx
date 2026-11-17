@@ -1,0 +1,83 @@
+---
+title: "App icon"
+description: "Upload your ZApp's icon. Zend checks it, hosts it and shows it everywhere your app appears."
+---
+
+Your icon appears in **Discover**, the app tray, Zend's confirm sheets and the bar above your app while it loads. Without one, Zend shows your app's first letter.
+
+You upload the image itself. Zend checks it, stores it and serves it, so people browsing Discover never load anything from your server.
+
+## Requirements
+
+| | |
+|---|---|
+| Format | PNG, JPEG or WebP |
+| Shape | Square. Non-square images are refused, not cropped |
+| Size | At least 256 × 256 px, at most 4096 × 4096 px. 512 × 512 is ideal |
+| File size | Up to 1 MB |
+
+Zend resizes every icon to 512 × 512 and saves it as a fresh PNG. Anything else in the file, such as location data or comments, is dropped. Leave some padding around your mark, since Zend shows icons in a circle in some places.
+
+## Upload with the CLI
+
+<CodeGroup>
+```bash Signed in
+zend apps icon hello ./icon.png
+```
+
+```bash At creation
+zend apps create hello "Hello" --icon ./icon.png
+```
+
+```bash CI
+ZEND_APP_KEY=zapp_sk_... zend apps icon hello ./icon.png
+```
+</CodeGroup>
+
+The CLI checks the file type and size before it uploads. See [`zend apps icon`](/cli/apps#icon).
+
+## Upload over HTTP
+
+Send the image as the request body with your [app key](/reference/rest-api#authentication):
+
+```bash
+curl -X PUT https://api.usezend.app/api/zend/v2/apps/server/icon \
+  -H "Authorization: Bearer $ZEND_APP_KEY" \
+  -H "Content-Type: image/png" \
+  --data-binary @icon.png
+```
+
+A private app's icon is live at once:
+
+```json
+{ "status": "live", "icon_url": "https://media.zendfi.app/zapps/6b0f.../3f9a1c2e.png" }
+```
+
+Every upload gets a new URL, so nobody sees an old copy from a cache.
+
+## Public apps
+
+A public app's new icon is reviewed before it shows. Your current icon stays until then, and your listing is unaffected:
+
+```json
+{
+  "status": "pending_review",
+  "pending_icon_url": "https://media.zendfi.app/zapps/6b0f.../8c2d4e1f.png",
+  "message": "Your new icon will show once it's reviewed. The current one stays until then."
+}
+```
+
+[`zend apps info`](/cli/apps#info) shows the waiting icon. Icons that copy Zend's logo or another brand's, or that could mislead people about who made the app, are rejected. See [Public apps](/ship/public-apps).
+
+## Errors
+
+| Code | Meaning |
+|---|---|
+| `ICON_EMPTY` | No image in the request body |
+| `ICON_TOO_LARGE` | Over 1 MB |
+| `ICON_NOT_AN_IMAGE` / `ICON_FORMAT` | Not a PNG, JPEG or WebP |
+| `ICON_NOT_SQUARE` | Width and height differ |
+| `ICON_TOO_SMALL` | Under 256 × 256 |
+| `ICON_UNREADABLE` | The image is damaged, or over 4096 × 4096 |
+| `ICON_STORAGE_UNAVAILABLE` | Zend couldn't store it. Try again |
+| `ICON_URL_NOT_ACCEPTED` | You sent `icon_url` when creating an app. Upload the image instead |

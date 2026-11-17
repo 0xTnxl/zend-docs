@@ -37,7 +37,8 @@ Approve the login on your phone. See [Log in](/cli/login).
 | Command | What it does |
 |---|---|
 | [`zend login`](/cli/login) | Pair the CLI with your Zend account |
-| [`zend apps`](/cli/apps) | Create, check, deploy and manage ZApps |
+| [`zend apps`](/cli/apps) | Create, check, deploy and manage ZApps, and upload their icons |
+| [`zend bot`](/cli/bot) | Create and check [bot accounts](/bots) |
 | [`zend keys`](/cli/keys) | Create, list and revoke API keys |
 | [`zend config`](/cli/config) | Set your account's webhook URL |
 | [`zend payments test`](/cli/payments) | Check a payment request without creating it |
@@ -60,6 +61,8 @@ Every command except `login` reads `~/.zend/config.json`:
 | `apiKey` | Saved by `zend login` |
 | `webhookUrl` | Saved by `zend config set webhookUrl` |
 | `baseUrl` | Optional. Only for pointing the CLI at a non-production environment |
+
+Bots you create are stored separately, one file each in `~/.zend/bots/`.
 
 The file is written with `0600` permissions (owner read and write only). If it's missing or has no `apiKey`, commands stop with "Not logged in. Run `zend login` first."
 

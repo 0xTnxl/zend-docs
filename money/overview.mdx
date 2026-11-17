@@ -7,13 +7,13 @@ Your app never touches balances, keys or payment screens. It asks; Zend shows it
 
 ## Actions
 
-|  | [`pay`](/money/pay) | [`request`](/money/requests-and-links#ask-links) | [`createLink`](/money/requests-and-links#money-links) | [`prize.create`](/money/prizes) |
-|---|---|---|---|---|
-| Direction | User → a Zend user | Anyone → the user | User → whoever opens the link | Host → winners your server picks |
-| Permission | `pay` | `request_payment` | `create_link` | `prize` |
-| You get back | `paymentId` | `id`, `url` | `id` (Zend shares the link) | The prize |
-| Webhook | `payment.completed` | `payment.completed` per payer | `link.claimed` per collector | `prize.*` |
-| Minimum | $0.01 | $0.01 | $1 per person | $1 |
+|  | [`pay`](/money/pay) | [`request`](/money/requests-and-links#ask-links) | [`createLink`](/money/requests-and-links#money-links) | [`prize.create`](/money/prizes) | [`unlock.buy`](/money/unlock) |
+|---|---|---|---|---|---|
+| Direction | User → a Zend user | Anyone → the user | User → whoever opens the link | Host → winners your server picks | Buyer → the item's payees |
+| Permission | `pay` | `request_payment` | `create_link` | `prize` | `unlock` |
+| You get back | `paymentId` | `id`, `url` | `id` (Zend shares the link) | The prize | `paymentId`, `receiptId` |
+| Webhook | `payment.completed` | `payment.completed` per payer | `link.claimed` per collector | `prize.*` | `unlock.bought`, `payment.completed` |
+| Minimum | $0.01 | $0.01 | $1 per person | $1 | $0.01 per payee |
 
 ## Amounts
 
@@ -24,7 +24,9 @@ await zend.pay({ to: "@ada", amount: 1.5 });
 await zend.pay({ to: "@ada", price: { ngn: 2000 } });
 ```
 
-With `price`, Zend converts at its current rate and shows ₦ on its sheet. Webhooks carry `amount_usd`, plus `price_ngn` and the rate used when you priced in Naira. Users see amounts in Naira by default.
+Money is held and moved in dollars. Zend's sheets show each amount in the person's own currency (chosen from where they signed up, changeable in **Settings → Currency**). A price you set in Naira shows in Naira. With `price`, Zend converts at its current rate. Webhooks carry `amount_usd`, plus `price_ngn` and the rate used when you priced in Naira.
+
+Naira is the only currency you can price in. Other keys in `price` are ignored, and the call then fails with `INVALID_AMOUNT`. Your app can't read a person's display currency.
 
 An ask link priced in Naira asks for that many Naira each time someone pays it. Money links and prizes are converted once, when they're made.
 

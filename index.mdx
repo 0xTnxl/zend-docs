@@ -8,7 +8,7 @@ Zend is a money network for the internet. Everyone on it has an @name, money mov
 Every app built on Zend shares the same network:
 
 - **People.** Sign in with Zend gives you a real person with an @name and one ID that's the same in every app. You don't build a sign-up screen.
-- **Money.** Payments, ask links, money links, splits and prizes, priced in Naira. Zend draws every money screen, so you never build or secure a payment UI.
+- **Money.** Payments, ask links, money links, splits, prizes and pay-to-read, shown in each person's own currency. Zend draws every money screen, so you never build or secure a payment UI.
 - **Reach.** Your app shows up in the chats and Activity feed people already use, and its links open anywhere a URL does.
 
 ## Two ways to build
@@ -45,8 +45,8 @@ Every app built on Zend shares the same network:
   <Card title="Chat games" icon="dice" href="/guides/interactions">
     Challenges and rounds that live in a DM, with cards that update as the game moves.
   </Card>
-  <Card title="Paid content" icon="newspaper" href="/money/pay">
-    Price something in Naira, take a cut with split payments, confirm on your server.
+  <Card title="Paid content" icon="newspaper" href="/money/unlock">
+    Sell articles and files that only buyers can open. Split each sale with the writer.
   </Card>
   <Card title="Tournaments" icon="trophy" href="/money/prizes">
     Host-funded prizes held safely until your server says who won.
@@ -60,6 +60,12 @@ Every app built on Zend shares the same network:
   <Card title="Fair draws" icon="scale-balanced" href="/fairness/random-draws">
     Coin flips, shuffles and winner picks that anyone can check afterwards.
   </Card>
+  <Card title="Games with strangers" icon="people-group" href="/examples/owambe">
+    Server-run rooms where players can add each other as friends afterwards.
+  </Card>
+  <Card title="Bots" icon="robot" href="/bots">
+    Automated accounts your code runs, owned by you and labelled for everyone.
+  </Card>
 </CardGroup>
 
 ## What you don't have to build
@@ -68,8 +74,9 @@ Every app built on Zend shares the same network:
 |---|---|
 | Sign-up, login, profiles | `zend.identity.get()` |
 | Payment screens and their security | Zend's confirm sheet |
-| A friend list and invite flow | Zend's people picker and chat actions |
+| A friend list and invite flow | Zend's people picker, `people.connect` and chat actions |
 | A realtime server | [Live rooms](/guides/live-rooms) |
 | Notifications that bring people back | Cards in chats and the Activity feed |
+| Paywalls and content encryption | [Pay-to-read](/money/unlock) |
 
 All HTTP paths in these docs are under `https://api.usezend.app`.

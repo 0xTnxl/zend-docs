@@ -41,6 +41,32 @@ You get `{ id, url }` and can share `url` yourself. Payers sign in to Zend to pa
 
 With `price: { ngn }`, the link asks for that many Naira every time it's paid, at the rate at that moment.
 
+### Paying by bank transfer
+
+A payer with nothing in their Zend yet can pay an ask link from a Nigerian bank account. Zend shows them a bank account to send Naira to, and the money goes straight to the link's owner without passing through the payer's balance. Your app doesn't need to do anything.
+
+- A Naira-priced link asks for its exact Naira price. A dollar amount is converted. On an open-amount link, the payer types the Naira amount.
+- Bank payments start at $0.50 and can't go above the link's maximum.
+- The payment counts once the bank transfer lands, which can take a few minutes.
+
+The `payment.completed` webhook for a bank payment has the usual fields plus `"method": "bank_transfer"`:
+
+```json
+{
+  "type": "payment.completed",
+  "data": {
+    "ask_link_id": "…",
+    "from": "zu_…",
+    "to": "zu_…",
+    "amount_usd": 3.25,
+    "reference": "lunch_42",
+    "method": "bank_transfer"
+  }
+}
+```
+
+Payments made inside Zend have no `method` field.
+
 ## Money links
 
 `zend.createLink` makes a link that anyone holding it can collect.
