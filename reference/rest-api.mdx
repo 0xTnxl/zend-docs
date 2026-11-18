@@ -72,14 +72,45 @@ Slugs are 2–31 characters of `a-z`, `0-9` and `-`.
 
 ## Bot accounts
 
+Creation, from the CLI:
+
 | Credential | Method | Path | Notes |
 |---|---|---|---|
 | None (rate limited per IP) | POST | `/api/v1/bots/sessions` | `{ bot_name, handle, address, scopes? }`. Returns `{ session_id, approval_url, expires_at }` |
 | None | GET | `/api/v1/bots/sessions/:id` | `{ status }`: `pending`, `approved`, `denied` or `expired` |
 | None | POST | `/api/v1/bots/sessions/:id/key` | `{ api_key }`, once |
-| Bot key (`zbot_live_...`) | GET | `/api/v1/bot/me` | The bot's profile, scopes and limits |
 
-These paths start at `https://api.usezend.app`, not under `/api/zend/v2`. [`zend bot create`](/cli/bot) calls them for you. See [Bot accounts](/bots).
+The bot itself, with `Authorization: Bearer zbot_live_...`:
+
+| Scope | Method | Path | Notes |
+|---|---|---|---|
+| `read` | GET | `/api/v1/bot/me` | Profile, scopes and limits |
+| `read` | PATCH | `/api/v1/bot/me` | `{ display_name }`, 1–40 characters |
+| `read` | GET | `/api/v1/bot/balance` | The bot's balance |
+| `read` | GET | `/api/v1/bot/dm` | The bot's chats |
+| `dm_send` | POST | `/api/v1/bot/dm/with/:handle` | Opens a chat. Returns `{ room_id, counterparty }` |
+| `read` | GET | `/api/v1/bot/dm/:room_id/messages` | Query `cursor`, `limit` (max 100). Direct chats only |
+| `dm_send` | POST | `/api/v1/bot/dm/:room_id/messages` | `{ content, client_id? }`. Text only |
+| `read` | POST | `/api/v1/bot/dm/:room_id/read` | `{ last_message_id }` |
+| `send_money` | POST | `/api/v1/bot/pay/prepare` | `{ to, amount }`. Returns `{ transaction_data_bcs, expires_in }` |
+| `send_money` | POST | `/api/v1/bot/pay/submit` | `{ transaction_data_bcs, signature, note? }`. Only prepared bytes, once |
+| `send_money` | POST | `/api/v1/bot/pay/deposit/prepare` | Builds the step that makes received funds spendable |
+| `send_money` | POST | `/api/v1/bot/pay/deposit/submit` | `{ transaction_data_bcs, signature }` |
+| `post_card` | POST | `/api/v1/bot/posts` | `{ text, client_id? }`. Returns `{ id }` |
+| `post_card` | DELETE | `/api/v1/bot/posts/:id` | Removes one of the bot's posts |
+
+These paths start at `https://api.usezend.app`, not under `/api/zend/v2`. [`zend bot`](/cli/bot) calls them for you. See [Bot accounts](/bots) for the payment steps and errors.
+
+The Zend app calls these on the owner's behalf, with the owner's own session. They aren't for your code:
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/zend/bots` | The owner's bots, with limits, posting and paused state |
+| GET | `/api/zend/bots/sessions/by-code/:code` | What the approval screen shows |
+| POST | `/api/zend/bots/sessions/:id/approve` / `deny` | Make or cancel a bot. Needs a person who passed the verified check and a fresh confirmation |
+| PATCH | `/api/zend/bots/:id/settings` | Limits, allowed recipients, first contact, requests a minute |
+| POST | `/api/zend/bots/:id/posting` | `{ enabled }` |
+| POST | `/api/zend/bots/:id/suspend` / `resume` | Pause or resume |
 
 ## Endpoints the Zend client uses
 

@@ -1,24 +1,27 @@
 ---
 title: "Bot accounts"
-description: "Automated Zend accounts that your code runs, owned by you and labelled for everyone else."
+description: "Automated Zend accounts that your code runs. They chat, get paid by @handle, pay within limits you set, and post to the feed."
 ---
 
 A bot is a Zend account that code runs. It has its own @handle and its own signing key, and it belongs to you. Everyone else sees it marked **Automated**, never with the verified-person badge.
 
+A bot works like any other account: people message it, pay it by @handle and see its posts. It acts through an API key instead of a phone.
+
 <Warning>
-Bot accounts are in their first phase. Today a bot can sign in and read its own profile and limits (`GET /api/v1/bot/me`). Messaging, posting and money scopes can be requested now so keys keep working as they arrive, but nothing uses them yet.
+Bot accounts are new. Messaging, payments and posting are built but haven't had a full test with real money yet. Start with small amounts. Bots can't join group chats, and there's no event stream or webhook for bots yet, so a bot reads its chats by polling.
 </Warning>
 
 ## Before you start
 
-- You need a Zend account that has passed Zend's **verified person** check.
+- You need a Zend account that has passed Zend's **verified person** check, and you need to sign in with Google. Other sign-in methods can't approve bots yet.
 - You can own up to 5 bots, and bots can't own bots.
 - Approving a bot needs you to confirm it's you in the Zend app.
 
 ## Create a bot
 
 ```bash
-zend bot create "Match Reminder" --handle matchbot --scopes read
+zend bot create "Match Reminder" --handle matchbot \
+  --scopes read,dm_send,post_card,send_money,receive_money
 ```
 
 <Steps>
@@ -35,11 +38,8 @@ zend bot create "Match Reminder" --handle matchbot --scopes read
 
 ```text
 $ zend bot create "Match Reminder" --handle matchbot
-
 Approve this bot in the Zend App:
-
   https://zdfi.me/bot-auth/Xk3…
-
 Waiting for approval (expires 2026-11-17T14:32:00Z)...
 ...
 @matchbot is ready. Its key is saved in /home/you/.zend/bots/matchbot.json.
@@ -51,17 +51,19 @@ Waiting for approval (expires 2026-11-17T14:32:00Z)...
 | `--handle` | 3–20 characters of `a-z`, `0-9`, `.` and `_`, not starting or ending with `.` or `_`. Must be free |
 | `--scopes` | Comma-separated. Default `read` |
 
-| Scope | Allows | Status |
-|---|---|---|
-| `read` | Read its own profile and settings | Works now |
-| `dm_send` | Send messages | Reserved |
-| `post_card` | Post to the feed | Reserved |
-| `send_money` | Send money within the limits you set | Reserved |
-| `receive_money` | Receive money | Reserved |
+| Scope | Allows |
+|---|---|
+| `read` | Read its profile, balance, chats and messages, and rename itself |
+| `dm_send` | Open chats and send messages |
+| `post_card` | Post to the feed |
+| `send_money` | Send money within the limits you set |
+| `receive_money` | Receive money |
 
 Scopes are fixed when you approve the bot.
 
-## Use the key
+## Call the API
+
+Every call sends the bot's key. Paths start at `https://api.usezend.app/api/v1/bot`.
 
 ```bash
 curl https://api.usezend.app/api/v1/bot/me \
@@ -74,7 +76,7 @@ curl https://api.usezend.app/api/v1/bot/me \
   "name": "Match Reminder",
   "handle": "matchbot",
   "avatar_url": null,
-  "scopes": ["read"],
+  "scopes": ["read", "dm_send", "post_card", "send_money", "receive_money"],
   "limits": {
     "per_payment": 5,
     "per_day": 20,
@@ -84,16 +86,74 @@ curl https://api.usezend.app/api/v1/bot/me \
 }
 ```
 
-Or from the CLI:
-
-```bash
-zend bot list          # bots on this machine
-zend bot me matchbot   # check it can sign in
-```
-
 - Each key lasts 90 days.
 - Each bot can make 60 requests a minute by default (`RATE_LIMITED` past that).
 - A paused bot gets `403 BOT_SUSPENDED`.
+
+## Messages
+
+A bot uses one-to-one chats only.
+
+```bash
+# Open a chat by @handle (needs dm_send)
+curl -X POST https://api.usezend.app/api/v1/bot/dm/with/alice \
+  -H "Authorization: Bearer $ZEND_BOT_KEY"
+# → { "room_id": "…", "counterparty": { … } }
+
+# Send text
+curl -X POST https://api.usezend.app/api/v1/bot/dm/$ROOM/messages \
+  -H "Authorization: Bearer $ZEND_BOT_KEY" -H "Content-Type: application/json" \
+  -d '{ "content": "Your match is at 6", "client_id": "reminder-2026-11-17" }'
+```
+
+- `GET /dm` lists the bot's chats, `GET /dm/:room_id/messages` reads one, and `POST /dm/:room_id/read` with `{ "last_message_id": "…" }` marks it read.
+- Send `client_id` to make a retry safe. The same `client_id` never sends twice.
+- Messages are plain text. Blocks, delivery, push notifications and the 60-messages-a-minute limit work as they do for people.
+- A bot can write to someone only after that person has written to it. You can turn on first contact for a bot, and then it can start chats (`FIRST_CONTACT_OFF` until then).
+- If someone blocks the bot, sends fail with `USER_BLOCKED`.
+
+## Get paid and pay
+
+People pay a bot by its @handle, the same as anyone. The money lands in the bot's balance:
+
+```bash
+curl https://api.usezend.app/api/v1/bot/balance -H "Authorization: Bearer $ZEND_BOT_KEY"
+```
+
+A bot signs its own payments. Zend builds the payment, checks your limits, and submits it. Zend never holds the bot's key.
+
+<Steps>
+  <Step title="Prepare">
+    `POST /pay/prepare` with `{ "to": "alice", "amount": 2.5 }`. Zend checks the limits, builds the payment and returns `{ "transaction_data_bcs": "…", "expires_in": 300 }`.
+  </Step>
+  <Step title="Sign">
+    Sign those exact bytes with the bot's key: ed25519 over the blake2b-256 hash of `[0, 0, 0]` followed by the bytes. Send the result as base64 of one flag byte (`0x00`), the 64-byte signature and the 32-byte public key. `zend bot pay` does this for you.
+  </Step>
+  <Step title="Submit">
+    `POST /pay/submit` with `{ "transaction_data_bcs": "…", "signature": "…", "note": "Thanks" }`. Zend accepts only the bytes it prepared, once, within 5 minutes. A different or repeated payload fails with `NOT_PREPARED`.
+  </Step>
+</Steps>
+
+Money a bot receives can sit in a form it can't spend yet. If a payment fails with `SUI_ADDRESS_BALANCE_INSUFFICIENT`, run the deposit step: `POST /pay/deposit/prepare`, sign the same way, then `POST /pay/deposit/submit` (`zend bot deposit` does both). It moves the bot's own funds and sends nothing to anyone else.
+
+Because Zend builds the payment, the amount and person your limits check are the ones inside the signed bytes. A bot can't sign a big payment and have it counted as a small one. The limits apply to payments sent through Zend.
+
+## Post to the feed
+
+```bash
+curl -X POST https://api.usezend.app/api/v1/bot/posts \
+  -H "Authorization: Bearer $ZEND_BOT_KEY" -H "Content-Type: application/json" \
+  -d '{ "text": "Daily check: all quiet.", "client_id": "daily-2026-11-17" }'
+# → { "id": "…" }
+```
+
+A post is a card in the Feed, with the bot's avatar and name, the **Automated** mark, the text, reactions and comments, the same as any other card. `DELETE /posts/:id` removes one of the bot's own posts.
+
+- Text is 1–280 characters and follows the same plain-language rule as [ZApp cards](/ship/copy-guide). A rejected word returns `PLAIN_LANGUAGE`.
+- A bot can post 6 an hour and 30 a day (`POST_LIMIT`).
+- The same `client_id` never posts twice.
+- Only you and people who have chatted with the bot, paid it or been paid by it see its posts. Strangers never do. Blocking the bot hides them.
+- You can turn a bot's posting off. Then posting returns `POSTING_OFF`.
 
 ## Limits you set
 
@@ -101,33 +161,47 @@ Every bot has limits that apply whenever it acts without a person present. They'
 
 | Limit | Default |
 |---|---|
-| Per payment | $5 |
-| Per day | $20 (never below the per-payment limit, at most $100,000) |
-| Who it can pay | Anyone (`recipient_allowlist: null`), or a list of @handles |
+| Per payment | $5 (at most $499) |
+| Per day | $20 (never below the per-payment limit, at most $100,000), counted over the last 24 hours |
+| Who it can pay | Anyone (`recipient_allowlist: null`), or a list of @handles. An empty list means no one |
 | Message people it hasn't talked to before | Off |
+| Posting | On |
 | Requests a minute | 60 (1–600) |
 
-Raising a money limit, widening who it can pay, or turning on first-contact messages needs you to confirm it's you. You can also pause and resume a bot.
+Lowering a limit takes effect at once. Raising a money limit, widening who it can pay, turning on first-contact messages or turning on posting needs you to confirm it's you. You can also pause and resume a bot, which stops its calls and hides its posts. The Zend app doesn't have a screen for these yet. The owner routes are in the [REST API](/reference/rest-api#bot-accounts).
 
 ## Keep the keys safe
 
-- The signing key in `~/.zend/bots/<handle>.json` controls the bot's account. Zend never sees it and can't recover it.
+- The signing key in `~/.zend/bots/<handle>.json` controls the bot's account and its money. Zend never sees it and can't recover it.
 - Treat the `zbot_live_` key like a password. Don't commit it or send it to a browser.
-- There's no way to issue a new key for an existing bot yet. Back up the bot file.
+- There's no way to issue a new key for an existing bot yet. Back up the bot file. A key expires after 90 days.
 
 ## Errors
 
 | Code | Meaning |
 |---|---|
-| `INVALID_NAME` / `INVALID_HANDLE` / `INVALID_SCOPE` | Fix the request |
+| `INVALID_NAME` / `INVALID_HANDLE` / `INVALID_SCOPE` / `INVALID_ADDRESS` | Fix the request |
 | `HANDLE_TAKEN` | Pick another handle |
 | `NEEDS_HUMAN_CHECK` | Pass the verified person check in the Zend app first |
 | `TOO_MANY_BOTS` | You already own 5 bots |
 | `NOT_ALLOWED` | This kind of account can't make bots |
-| `STEP_UP_REQUIRED` | Confirm it's you, then approve again |
+| `STEP_UP_REQUIRED` | Confirm it's you, then try again |
 | `SESSION_NOT_PENDING` | The request expired or was already answered. Run `zend bot create` again |
 | `SESSION_INVALIDATED` | The key was already collected |
 | `INVALID_API_KEY` | Missing, wrong or expired `zbot_live_` key |
 | `INSUFFICIENT_SCOPE` | The key doesn't have the scope for this call |
 | `BOT_SUSPENDED` | You paused the bot |
 | `RATE_LIMITED` | Over the bot's requests a minute |
+| `FIRST_CONTACT_OFF` | The bot can only reply to people who wrote first |
+| `USER_BLOCKED` | The other account blocked the bot, or the bot blocked them |
+| `USER_NOT_FOUND` | No one has that @handle |
+| `NOT_SUPPORTED` | Bots can't use group chats |
+| `INVALID_AMOUNT` | The amount must be above zero |
+| `OVER_PAYMENT_LIMIT` / `OVER_DAILY_LIMIT` | The payment is over a limit you set |
+| `RECIPIENT_NOT_ALLOWED` | The person isn't on the bot's list |
+| `NOT_PREPARED` | The payment expired, was already sent, or wasn't prepared by Zend. Start again |
+| `BUSY` | Another payment from this bot is being sent. Retry shortly |
+| `SUI_ADDRESS_BALANCE_INSUFFICIENT` | Not enough spendable balance. Run the deposit step |
+| `RECIPIENT_NOT_FOUND` / `SELF_TRANSFER` | Fix the recipient |
+| `BALANCE_UNAVAILABLE` / `PREPARE_FAILED` / `SUBMIT_FAILED` | Try again |
+| `INVALID_POST` / `PLAIN_LANGUAGE` / `POST_LIMIT` / `POSTING_OFF` | See [Post to the feed](#post-to-the-feed) |

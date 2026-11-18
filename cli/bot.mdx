@@ -1,19 +1,21 @@
 ---
 title: "zend bot"
-description: "Create and check bot accounts."
+description: "Create bot accounts, and message, post and pay as them."
 ---
 
 Bot accounts are Zend accounts that your code runs. See [Bot accounts](/bots) for what they can do and the limits you set.
 
+Every command except `create` and `list` takes the bot's @handle and uses the key saved in `~/.zend/bots/<handle>.json`.
+
 ## create
 
 ```bash
-zend bot create "<Name>" --handle <handle> [--scopes read,dm_send]
+zend bot create "<Name>" --handle <handle> [--scopes read,dm_send,post_card,send_money,receive_money]
 ```
 
 Generates the bot's signing key locally, asks you to approve the bot in the Zend app, then saves its API key. Everything is stored in `~/.zend/bots/<handle>.json` with mode `0600`. Only the bot's address is sent to Zend.
 
-`create` doesn't need `zend login`. You approve it on your phone instead, which needs a Zend account that has passed the verified person check.
+`create` doesn't need `zend login`. You approve it on your phone instead, which needs a Zend account that has passed the verified person check and signs in with Google.
 
 If you deny the request or it expires, the local file stays without an API key, and `create` refuses that handle until you delete the file.
 
@@ -36,4 +38,60 @@ Lists the bots saved on this machine.
 zend bot me <handle>
 ```
 
-Calls `GET /api/v1/bot/me` with the bot's key and prints its profile, scopes and limits.
+Calls `GET /api/v1/bot/me` and prints the bot's profile, scopes and limits. Use it to check a new key works.
+
+## balance
+
+```bash
+zend bot balance <handle>
+```
+
+Prints the bot's balance.
+
+## chats
+
+```bash
+zend bot chats <handle>
+```
+
+Lists the bot's conversations with their unread counts.
+
+## say
+
+```bash
+zend bot say <handle> <to> <text...>
+```
+
+```bash
+zend bot say matchbot @alice "Your match is at 6"
+```
+
+Opens the chat with `@alice` and sends the message. Needs the `dm_send` scope. It fails with `FIRST_CONTACT_OFF` unless Alice has written to the bot first or you turned on first contact for it.
+
+## post
+
+```bash
+zend bot post <handle> <text...>
+```
+
+Posts to the Feed as the bot. Needs `post_card`. Only you and people who have chatted with or paid the bot see it. Up to 280 characters, 6 an hour.
+
+## pay
+
+```bash
+zend bot pay <handle> <to> <amount> [--note <text>]
+```
+
+```bash
+zend bot pay matchbot @alice 2.50 --note "Thanks"
+```
+
+Prepares the payment, signs it with the bot's key on this machine, and submits it. Needs `send_money`. It stops with `OVER_PAYMENT_LIMIT`, `OVER_DAILY_LIMIT` or `RECIPIENT_NOT_ALLOWED` when a limit you set says no. Try a small amount first.
+
+## deposit
+
+```bash
+zend bot deposit <handle>
+```
+
+Moves money the bot received into its spendable balance. Run it if `pay` fails with `SUI_ADDRESS_BALANCE_INSUFFICIENT`. It sends nothing to anyone else.
