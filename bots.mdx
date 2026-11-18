@@ -63,7 +63,7 @@ Scopes are fixed when you approve the bot.
 
 ## Call the API
 
-Every call sends the bot's key. Paths start at `https://api.usezend.app/api/v1/bot`.
+In Node, use the [Bot SDK](/reference/bot-sdk), which handles the key, polling and payment signing. Over HTTP, every call sends the bot's key. Paths start at `https://api.usezend.app/api/v1/bot`.
 
 ```bash
 curl https://api.usezend.app/api/v1/bot/me \

@@ -10,12 +10,12 @@ These docs are served to AI tools as an MCP server and as plain text, so your as
 <Tabs>
   <Tab title="Claude Code">
     ```bash
-    claude mcp add --transport http zend https://docs.usezend.app/mcp
+    claude mcp add --transport http zend https://developers.usezend.app/mcp
     ```
   </Tab>
   <Tab title="Codex">
     ```bash
-    codex mcp add --transport http zend https://docs.usezend.app/mcp
+    codex mcp add --transport http zend https://developers.usezend.app/mcp
     ```
   </Tab>
   <Tab title="Cursor">
@@ -24,7 +24,7 @@ These docs are served to AI tools as an MCP server and as plain text, so your as
     ```json
     {
       "mcpServers": {
-        "zend": { "url": "https://docs.usezend.app/mcp" }
+        "zend": { "url": "https://developers.usezend.app/mcp" }
       }
     }
     ```
@@ -35,7 +35,7 @@ These docs are served to AI tools as an MCP server and as plain text, so your as
     ```json
     {
       "servers": {
-        "zend": { "type": "http", "url": "https://docs.usezend.app/mcp" }
+        "zend": { "type": "http", "url": "https://developers.usezend.app/mcp" }
       }
     }
     ```
@@ -46,8 +46,8 @@ These docs are served to AI tools as an MCP server and as plain text, so your as
 
 | URL | What it is |
 |---|---|
-| `https://docs.usezend.app/llms.txt` | An index of every page |
-| `https://docs.usezend.app/llms-full.txt` | Every page in one file |
+| `https://developers.usezend.app/llms.txt` | An index of every page |
+| `https://developers.usezend.app/llms-full.txt` | Every page in one file |
 | Any page URL with `.md` added | That page as Markdown |
 
 Every page also has a menu at the top to copy it as Markdown or open it in ChatGPT, Claude or Perplexity.
@@ -55,7 +55,7 @@ Every page also has a menu at the top to copy it as Markdown or open it in ChatG
 ## A prompt to start with
 
 ```text
-Read https://docs.usezend.app/llms.txt. Build a ZApp with @zendfi/appkit:
+Read https://developers.usezend.app/llms.txt. Build a ZApp with @zendfi/appkit:
 a page that signs the user in with zend.identity.get(), a zapp.json manifest,
 and a Node server that verifies appSession with ZendServer.verifySession and
 verifies webhooks with verifyWebhook. Credit payments only on payment.completed.

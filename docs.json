@@ -95,7 +95,8 @@
             "group": "@zendfi/appkit",
             "pages": [
               "reference/client-sdk",
-              "reference/server-sdk"
+              "reference/server-sdk",
+              "reference/bot-sdk"
             ]
           },
           {
