@@ -8,7 +8,7 @@ A bot is a Zend account that code runs. It has its own @handle and its own signi
 A bot works like any other account: people message it, pay it by @handle and see its posts. It acts through an API key instead of a phone.
 
 <Warning>
-Bot accounts are new. Messaging, payments and posting are built but haven't had a full test with real money yet. Start with small amounts. Bots can't join group chats, and there's no event stream or webhook for bots yet, so a bot reads its chats by polling.
+Bot accounts are new. Messaging, payments, posting and events are built but haven't had a full test with real money yet. Start with small amounts. Bots can't join group chats.
 </Warning>
 
 ## Before you start
@@ -89,6 +89,57 @@ curl https://api.usezend.app/api/v1/bot/me \
 - Each key lasts 90 days.
 - Each bot can make 60 requests a minute by default (`RATE_LIMITED` past that).
 - A paused bot gets `403 BOT_SUSPENDED`.
+
+## Events and webhooks
+
+A bot doesn't have to poll. Zend records what happens to it and gives it to you three ways. All three read the same events, so a bot that was offline can catch up. Events are kept for 7 days.
+
+| Event | When |
+|---|---|
+| `message.received` | Someone sent the bot a message. `data`: `room_id`, `message_id`, `message_type`, `text` (text messages only), `from { user_id, handle }`, `created_at` |
+| `payment.received` | Someone paid the bot by @handle. `data`: `transfer_id`, `from`, `amount_usdc`, `note` |
+| `post.comment` | Someone commented on the bot's post. `data`: `post_id`, `comment_id`, `text`, `from` |
+| `post.reaction` | Someone reacted to the bot's post. `data`: `post_id`, `emoji`, `from` |
+| `bot.paused` / `bot.resumed` | The owner paused or resumed the bot |
+| `bot.ping` | A test from `webhook/test` |
+
+Every event looks like this:
+
+```json
+{ "seq": 41, "id": "6f1c…", "type": "message.received", "created_at": "2026-11-18T19:23:11Z",
+  "data": { "room_id": "…", "message_id": "…", "message_type": "text", "text": "hi", "from": { "user_id": "…", "handle": "ada" } } }
+```
+
+`seq` increases for each event. Events can arrive more than once, so use `id` to skip repeats.
+
+### Stream
+
+```bash
+curl -N https://api.usezend.app/api/v1/bot/events/stream \
+  -H "Authorization: Bearer $ZEND_BOT_KEY" -H "Last-Event-ID: 40"
+```
+
+A server-sent events connection that sends each event as it happens. Start where you left off with the `Last-Event-ID` header or `?after=<seq>`. With neither, you get new events only. The connection closes after an hour, so reconnect with the last `seq` you saw. The [Bot SDK](/reference/bot-sdk) does this for you.
+
+### Poll
+
+`GET /api/v1/bot/events?after=<seq>&limit=100` returns `{ "events": [...], "next": <seq> }`, oldest first. Send `next` back as `after`.
+
+### Webhook
+
+Zend sends each event to your server as a signed `POST`.
+
+```bash
+zend bot webhook set matchbot https://example.com/zend --events message.received,payment.received
+# Secret (shown once): whsec_…
+zend bot webhook test matchbot
+```
+
+- The address must be `https`, use a public website name (not a number or `localhost`) and port 443 or 8443. Zend refuses addresses that lead somewhere private, and doesn't follow redirects.
+- A bot has one webhook. `events` limits which types it receives. Leave it out for all.
+- Answer with a `2xx` within 10 seconds. Otherwise Zend retries after 10 seconds, doubling each time, up to 12 tries.
+- Each request has `x-zend-signature: t=<unix>,v1=<hex>` and `x-zend-event-id`. The signature is an HMAC-SHA256 of `"<t>.<body>"` with your secret. Check it, and reject a `t` more than 5 minutes old. `verifyWebhook` in the [Bot SDK](/reference/bot-sdk#webhooks) does both.
+- `GET /webhook` shows the URL and how the last delivery went. `PUT /webhook` with `"rotate": true` makes a new secret.
 
 ## Messages
 

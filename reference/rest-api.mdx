@@ -96,6 +96,12 @@ The bot itself, with `Authorization: Bearer zbot_live_...`:
 | `send_money` | POST | `/api/v1/bot/pay/submit` | `{ transaction_data_bcs, signature, note? }`. Only prepared bytes, once |
 | `send_money` | POST | `/api/v1/bot/pay/deposit/prepare` | Builds the step that makes received funds spendable |
 | `send_money` | POST | `/api/v1/bot/pay/deposit/submit` | `{ transaction_data_bcs, signature }` |
+| `read` | GET | `/api/v1/bot/events` | Query `after`, `limit`. Returns `{ events, next }` |
+| `read` | GET | `/api/v1/bot/events/stream` | Server-sent events. `Last-Event-ID` or `after` to resume |
+| `read` | PUT | `/api/v1/bot/webhook` | `{ url, events?, rotate? }`. The secret is returned only when new |
+| `read` | GET | `/api/v1/bot/webhook` | The webhook and its last delivery |
+| `read` | DELETE | `/api/v1/bot/webhook` | Removes it |
+| `read` | POST | `/api/v1/bot/webhook/test` | Sends a `bot.ping` now |
 | `post_card` | POST | `/api/v1/bot/posts` | `{ text, client_id? }`. Returns `{ id }` |
 | `post_card` | DELETE | `/api/v1/bot/posts/:id` | Removes one of the bot's posts |
 

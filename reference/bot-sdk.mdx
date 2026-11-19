@@ -20,7 +20,7 @@ bot.onMessage(async (msg, ctx) => {
   if (msg.text.toLowerCase() === "hi") await ctx.reply("Hey! I'm a bot.");
 });
 
-await bot.start(); // polls until bot.stop()
+await bot.start(); // listens until bot.stop()
 ```
 
 ## Create the client
@@ -45,16 +45,46 @@ Keep both keys on your server. Don't ship them to a browser.
 bot.onMessage(async (msg, ctx) => {
   // msg: { id, roomId, from: { userId, handle }, text, createdAt }
   await ctx.reply(`You said: ${msg.text}`);
-  await ctx.pay({ amount: 0.25, note: "Thanks" }); // pays msg.from by default
+});
+bot.on("payment.received", async (event, ctx) => {
+  await ctx.reply(`Thanks for the ${event.data.amount_usdc}!`); // replies in a chat only for message events
 });
 bot.onError((e) => console.error(e));
-await bot.start({ pollMs: 4000 });
+await bot.start();
 ```
 
-- Handlers get new text messages from other people, oldest first. Each message is handled once. It's marked read after your handler runs, even if your handler throws, so one bad message can't loop. Errors go to `onError`.
-- There are no push events for bots yet, so `start()` polls. Keep `pollMs` at 3000 or more: a bot can make 60 requests a minute by default. A failed poll backs off up to 30 seconds. `start()` stops by itself on `INVALID_API_KEY` or `BOT_SUSPENDED`.
+`start()` opens a stream and calls your handlers as events happen. It picks up where it left off after a dropped connection. Pass `{ mode: "poll", pollMs: 4000 }` to check for unread messages instead (at least 3000; a bot can make 60 requests a minute by default). Polling only calls `onMessage`.
+
+- Handlers get new text messages from other people, in order. Each message is marked read after your handler runs, even if your handler throws, so one bad message can't loop. Errors go to `onError`.
+- `bot.on(type, handler)` takes any [event type](/bots#events-and-webhooks), or `"*"` for all. The event is `{ seq, id, type, created_at, data }`.
+- `start()` stops by itself on `INVALID_API_KEY` or `BOT_SUSPENDED`. `bot.stop()` ends it.
 - A bot only answers people who wrote first, unless the owner turned on first contact.
-- `bot.stop()` ends the loop.
+
+## Webhooks
+
+Use a webhook when your bot runs as a server that Zend can reach.
+
+```ts
+import http from "node:http";
+import { ZendBot, webhookHandler } from "@zendfi/appkit/bot";
+
+const bot = await ZendBot.fromFile("matchbot");
+const { secret } = await bot.setWebhook({ url: "https://example.com/zend", events: ["message.received"] });
+// keep `secret` (shown once)
+
+bot.onMessage(async (msg, ctx) => ctx.reply("Got it."));
+http.createServer(webhookHandler(process.env.ZEND_WEBHOOK_SECRET!, bot)).listen(3000);
+```
+
+`webhookHandler` checks the signature and the timestamp, answers quickly, skips repeats and passes the event to your handlers. To do it yourself, read the raw body and call `verifyWebhook(secret, req.headers["x-zend-signature"], rawBody)`, then `bot.dispatch(JSON.parse(rawBody))`.
+
+| Method | Does |
+|---|---|
+| `setWebhook({ url, events?, rotate? })` | Registers the webhook. Returns `secret` only when it's new |
+| `getWebhook()` | URL, events and how the last delivery went |
+| `testWebhook()` | Sends a `bot.ping` now and returns what your server answered |
+| `deleteWebhook()` | Removes it |
+| `events({ after, limit })` | Events after a number, for catching up |
 
 ## Methods
 

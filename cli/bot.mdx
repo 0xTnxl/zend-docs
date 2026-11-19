@@ -95,3 +95,22 @@ zend bot deposit <handle>
 ```
 
 Moves money the bot received into its spendable balance. Run it if `pay` fails with `SUI_ADDRESS_BALANCE_INSUFFICIENT`. It sends nothing to anyone else.
+
+## events
+
+```bash
+zend bot events <handle> [--after <seq>] [--follow]
+```
+
+Prints the bot's events from the last 7 days. `--follow` keeps the connection open and prints each event as it happens, which is a quick way to see what your bot would receive.
+
+## webhook
+
+```bash
+zend bot webhook set <handle> <url> [--events message.received,payment.received] [--rotate]
+zend bot webhook show <handle>
+zend bot webhook test <handle>
+zend bot webhook delete <handle>
+```
+
+`set` registers your server and prints the signing secret once. `test` sends a `bot.ping` and says what your server answered. `show` includes how the last delivery went. See [events and webhooks](/bots#events-and-webhooks).
