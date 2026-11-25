@@ -38,6 +38,22 @@ During the wait: your server can correct the result once; the host can cancel (e
 No result by the resolve deadline: everything back to host.
 ```
 
+## Timing
+
+| Setting | Rule |
+|---|---|
+| `joinInSecs` | At least 60. Joining closes at this time |
+| `resolveInSecs` | The results deadline. Must be later than `joinInSecs`, and at most 30 days |
+| `disputeSecs` | The wait after results. Default 3600 (1 hour). Values under 600 are raised to 600 (10 minutes). At most 7 days |
+| `maxPlayers` | 1–500 |
+
+Times count from when the host creates the prize. A time outside these rules fails with `INVALID_DEADLINES`, and `maxPlayers` outside 1–500 with `INVALID_MAX_PLAYERS`.
+
+- Your server can send the first result only after joining closes (`TOO_EARLY`, with the closing time) and before the results deadline (`RESULT_DEADLINE_PASSED`).
+- The dispute window starts when Zend accepts the result. A correction starts it again.
+- When the window ends, Zend pays the winners. When the results deadline passes with no result, Zend returns the whole prize to the host. Zend checks for both about every 60 seconds, so expect up to a minute's delay.
+- The host can cancel only during the dispute window. Cancelling returns the whole prize to the host (`prize.refunded` with `reason: "vetoed"`). Before results, or after the window, it fails with `WINDOW_CLOSED`.
+
 ## In your page
 
 ```ts
@@ -85,18 +101,22 @@ Zend and the prize contract both check that:
 
 | Event | When |
 |---|---|
-| `prize.created` | The host funded it |
-| `prize.joined` | A player joined (`data.by` is their `appUserId`) |
-| `prize.resolved` | Your server posted results |
-| `prize.paid` | The wait ended and winners were paid |
-| `prize.refunded` | Money returned to the host. `reason` is `vetoed` or `no_result` |
+| `prize.created` | The host funded it. `data` is the prize |
+| `prize.joined` | A player joined: `{ prize_id, by }`, where `by` is their `appUserId` |
+| `prize.resolved` | Zend accepted your server's result or correction: `{ prize, digest }` |
+| `prize.paid` | The wait ended and winners were paid: `{ prize, reason: "finalized", digest }` |
+| `prize.refunded` | The whole prize returned to the host: `{ prize, reason, digest }`. `reason` is `vetoed` (host cancelled) or `no_result` (no result by the deadline) |
+
+See [Webhooks](/reference/webhooks#events) for the fields of `prize`.
 
 ## Limits
 
-| Tier | Largest prize |
-|---|---|
-| private | $20 |
-| public | $100 |
-| growth | $500 |
+A prize is at least $1. The largest prize is the lower of your tier's maximum and a Zend-wide cap, currently $20:
 
-A Zend-wide cap of $100 also applies while the prize contract is new.
+| Tier | Tier maximum | Largest prize today |
+|---|---|---|
+| private | $20 | $20 |
+| public | $100 | $20 |
+| growth | $500 | $20 |
+
+A bigger prize fails with `APP_LIMIT_AMOUNT`, and a smaller one with `BELOW_MINIMUM`.

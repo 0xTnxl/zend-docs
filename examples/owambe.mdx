@@ -18,7 +18,10 @@ It never touches real money. Its manifest asks only for `post_card` and `connect
 | [Server-only moves](/guides/interactions#who-can-update) | Every phase change (`voting`, `results`, `done`) is `serverOnly`, so no page can end a round |
 | [Live rooms from your server](/guides/live-rooms#from-your-server) | The server joins each room with its app key, runs the rules, and answers as `from: "app"`. Pages send intents only and trust only `from: "app"` |
 | [Blocked pairs](/guides/people#keep-blocked-people-apart) | Matchmaking calls `blockedPairs` so two people who blocked each other never share a room |
-| [People connect and chat](/guides/people#add-someone-you-met) | After the vote, **Add** buttons call `people.connect` with a note like "Met in Room KQ7M2D" |
+| [People connect and chat](/guides/people#add-someone-you-met) | After the vote, **Add** buttons call `people.connect` with a note like "Met in room KQ7M2D.", and a **Chat** button calls `people.chat` |
+| [Chat action invites](/guides/manifest#chatactions) | **Play Owambe** in a chat creates an `invite` interaction; the server moves it to `joined` when the friend arrives |
+| [Feed cards](/guides/cards#placement) | `result` cards posted to the feed after a round |
+| [Origin ownership](/ship/public-apps#prove-you-own-your-origins) | Serves `/.well-known/zend-app.json` as a public app |
 | [Room links](/guides/people#room-links) | `zend.share` sends `https://app.usezend.app/apps/owambe?room=KQ7M2D`; the entry page reads `?room=` |
 | [Cards](/guides/cards) | `result` and `invite` cards in chats |
 
@@ -61,7 +64,12 @@ It never touches real money. Its manifest asks only for `post_card` and `connect
   "results": "app",
   "webhook": "https://owambe-rooms-zapp.onrender.com/zend/webhook",
   "description": "Give away your play money fast in a room of strangers. Biggest bag at the end loses.",
-  "category": "games"
+  "category": "games",
+  "developer": {
+    "name": "Zend",
+    "support": "support@usezend.app",
+    "privacy": "https://www.usezend.app/privacy"
+  }
 }
 ```
 
@@ -75,7 +83,7 @@ It never touches real money. Its manifest asks only for `post_card` and `connect
     The server checks `blockedPairs`, creates a `round` interaction for the people in the lobby with `createInteraction`, opens the live room with its app key, and fills empty seats with in-game bots.
   </Step>
   <Step title="Play">
-    Pages join with `zend.live.join` and send intents (`gift`, `bid`, `react`). The server checks every rule and broadcasts the result as `from: "app"`.
+    Pages join with `zend.live.join` and send intents (`gift`, `spray`, `bid`, `super`, `react`). The server checks every rule and broadcasts the result as `from: "app"`.
   </Step>
   <Step title="Vote and results">
     Votes go over HTTP, because everyone in a room sees every room message. The server moves the round to `voting`, then `results`, then `done`. At `done`, Zend closes the room.
@@ -91,7 +99,9 @@ It never touches real money. Its manifest asks only for `post_card` and `connect
 const { status } = await zend.people.connect({
   appUserId: player.appUserId,
   interactionId: round.id,
-  note: `Met in Room ${roomCode}`,
+  note: `Met in room ${roomCode}.`,
 });
-if (status === "friends") await zend.people.chat({ appUserId: player.appUserId });
+
+// Separately, a Chat button:
+await zend.people.chat({ appUserId: player.appUserId }); // NO_CHAT if the two have never chatted
 ```

@@ -17,7 +17,7 @@ Every app has a tier: `private`, `public` or `growth`. New apps start on `privat
 | Cards per user per day | 20 | 50 | 100 |
 | Largest prize | $20 | $100 | $500 |
 
-Zend-wide limits apply on top, for example a $100 cap per money link and per prize while the contracts are new.
+Zend-wide limits apply on top, so the effective limit is the lower of the two. Today a money link can hold at most $20 (all uses together, `ABOVE_LINK_MAXIMUM`), and a prize can be at most $20 (`APP_LIMIT_AMOUNT`), on every tier.
 
 | Error | Limit |
 |---|---|
@@ -62,9 +62,11 @@ zend apps info <slug>
 | Bridge call timeout | 10 minutes (`TIMEOUT`) |
 | People added with `people.connect` | 30 an hour per user (`CONNECT_LIMIT`) |
 | Pay-to-read listings | 100 a day per app |
-| Pay-to-read `read` | 300 an hour per user, 10 MB per call |
+| Pay-to-read `read` (once it's turned on) | 300 an hour per user, 10 MB per call |
 | Bank transfers to ask links | 10 an hour per payer, from $0.50 |
-| Bot accounts | 5 per owner, 60 requests a minute each by default |
-| Bot payments | $5 each and $20 a day by default, never more than $499 each. Owner sets them |
+| Bot accounts | 5 per owner, 60 requests a minute each by default (1–600). Keys last 90 days |
+| Bot payments | $5 each and $20 a day by default, never more than $499 each or $100,000 a day. Owner sets them. A prepared payment lasts 5 minutes; notes up to 140 characters |
 | Bot posts | 280 characters, 6 an hour, 30 a day |
 | Bot messages | 60 a minute, direct chats only |
+| Bot events | Kept 7 days; up to 500 a page. Webhooks: 10 s to answer, 12 tries |
+| Bot approval and settings links | 10 minutes |

@@ -1,0 +1,32 @@
+---
+title: "ZApp Check"
+description: "A test ZApp you run yourself: checks interactions, cards, live rooms, a linked bot and a prize against production."
+---
+
+ZApp Check is a private ZApp for testing. One Node process serves the page, answers its calls, takes Zend's webhooks and runs a test bot. Each check logs `PASS` or `FAIL` in the page and in the server's output.
+
+<Card title="Source" icon="github" href="https://github.com/zendfi/zend-appkit/tree/main/examples/zapp-check">
+  `examples/zapp-check` in the AppKit repo. Its README has every step.
+</Card>
+
+## What it checks
+
+| Area | Check |
+|---|---|
+| [Interactions](/guides/interactions#who-can-update) | A page move works, and a `serverOnly` move from the page is refused with `TRANSITION_SERVER_ONLY` |
+| [Cards](/guides/cards) and [live rooms](/guides/live-rooms) | A card in the chat, and two people in one room |
+| [Linked bot](/bots#link-it-to-your-zapp) | The bot messages someone who never wrote to it, the chat header says **Automated · from ZApp Check**, and the link in its message opens the app |
+| [`zend bot settings`](/cli/bot#settings) | `--first-contact on` prints a link that you approve on your phone |
+| [Prizes](/money/prizes) | A $1 prize: a result before joining closes is refused, then join, result, payout, and a host cancel |
+| Server | App key, payments lookup, missed webhooks and webhook signatures, with `node server-checks.mjs` and no phone |
+
+## Run it
+
+```bash
+zend apps create zapp-check "ZApp Check"
+zend apps resolver-key
+zend bot create "ZApp Check Bot" --handle <handle> --scopes read,dm_send
+APP_SLUG=zapp-check BOT=<handle> node server.mjs
+```
+
+Put the server behind a tunnel, fill `zapp.template.json` with the tunnel address, the resolver key and `"bot": "<handle>"`, and deploy it with `zend apps deploy`. You need two Zend accounts: one that owns the app and the bot, and one to test with.

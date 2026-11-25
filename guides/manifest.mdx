@@ -118,6 +118,27 @@ Each upload creates a new version and makes it active. Zend checks the whole fil
   Reserved. Must be empty.
 </ParamField>
 
+<ParamField body="bot" type="string">
+  The @handle of a [bot](/bots) you own, made with [`zend bot create`](/cli/bot#create). It becomes your app's own automated account:
+
+  - People who connected the app, and haven't muted or disconnected it, can get messages from the bot without writing to it first.
+  - The consent sheet says so: "@kobolt_bot, its automated account, can message you about what you do in Kobolt."
+  - Zend shows **Automated · from** and your app's name under the bot's name, in the chat header and on its profile. Tapping it opens your app.
+  - Links to your app in the bot's messages, like `https://app.usezend.app/apps/<slug>?deal=12`, open the app inside Zend. See [Links in messages](/bots#links-in-messages).
+  - The bot sees its app as `app: { slug, name }` from [`GET /me`](/bots#call-the-api) and `bot.me()`.
+
+  Rules:
+
+  - 3–20 characters of `a-z`, `0-9`, `.` and `_`. A leading `@` is allowed and removed, and the handle is lower-cased.
+  - The bot must be an active bot account owned by the app's owner.
+  - One bot can be linked to one app.
+  - Changing `bot`, including adding or removing it, sends a listed app back to review.
+  - Leaving `bot` out unlinks the bot.
+  - While the app is suspended, the link has no effect.
+
+  A malformed handle, a handle that isn't one of your active bots, or a bot already linked to another app fails the upload with `INVALID_MANIFEST` and the reason in `errors[]`.
+</ParamField>
+
 ## Permissions
 
 | Permission | Unlocks | User consent |

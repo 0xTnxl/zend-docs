@@ -33,6 +33,6 @@ description: "Fixes for common CLI problems."
   </Accordion>
 
   <Accordion title="I lost my ZEND_APP_KEY or webhook secret">
-    Run `zend apps rotate-key <slug>` (add `--webhook-secret` or `--both` as needed). The old value stops working immediately.
+    Run `zend apps rotate-key <slug>` (add `--webhook-secret` or `--both` as needed). The old value stops working immediately. This covers ZApp secrets only. The account secret for Pay with Zend webhooks (`whsec_`) can't be shown or rotated yet.
   </Accordion>
 </AccordionGroup>

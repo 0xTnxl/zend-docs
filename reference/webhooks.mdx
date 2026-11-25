@@ -27,20 +27,22 @@ Headers:
 |---|---|
 | `interaction.created` | The interaction |
 | `interaction.updated` | The interaction after the change |
-| `payment.completed` | `{ payment_id \| ask_link_id, from, to, amount_usd, price_ngn, ngn_per_usd, rate_id, reference }`. Split payments and pay-to-read purchases add `parts`. Ask links paid by bank transfer add `"method": "bank_transfer"` |
+| `payment.completed` | A `pay`: `{ payment_id, from, to, amount_usd, price_ngn, ngn_per_usd, rate_id, reference }`. Split payments and pay-to-read purchases add `parts` and `transaction_id`. An ask link payment: `{ ask_link_id, from, to, amount_usd, reference }`, plus `"method": "bank_transfer"` when paid by bank transfer |
 | `link.claimed` | `{ link_id, by, amount_usd, reference }` |
-| `random.drawn` | The draw result |
+| `random.drawn` | A [draw](/fairness/random-draws) finished: `{ interaction_id, label, kind, n, k, value, transaction_id, attestation, verify: { package, registry } }`. Sent once per draw, whether a page or your server asked |
 | `people.connected` | `{ from, to, interaction_id, mutual, at }`. `from` added `to`; `mutual` is `true` when `to` had already added `from` |
 | `unlock.listed` | The [listing](/money/unlock) |
 | `unlock.bought` | `{ item, listing_id, receipt_id, payment_id, by, for, amount_usd, transaction_id }`. `receipt_id` can be `null` |
 | `unlock.gifted` | `{ item, listing_id, receipt_id, from, to, transaction_id }` |
-| `prize.created` | The prize |
-| `prize.joined` | `{ prize_id, by }` |
-| `prize.resolved` | `{ prize, digest }` |
-| `prize.paid` | `{ prize, reason, digest }` |
-| `prize.refunded` | `{ prize, reason, digest }`. `reason` is `vetoed` or `no_result` |
+| `prize.created` | The host funded a [prize](/money/prizes). `data` is the prize |
+| `prize.joined` | A player joined: `{ prize_id, by }` |
+| `prize.resolved` | Zend accepted your server's result, or its one correction: `{ prize, digest }`. The dispute window starts now |
+| `prize.paid` | The dispute window ended and the winners were paid: `{ prize, reason: "finalized", digest }` |
+| `prize.refunded` | The whole prize went back to the host: `{ prize, reason, digest }`. `reason` is `vetoed` (the host cancelled during the dispute window) or `no_result` (no result by the results deadline) |
 
 `from`, `to`, `by` and `for` are `appUserId`s. `by` on `link.claimed` is `null` if the collector has never connected your app. `price_ngn`, `ngn_per_usd` and `rate_id` are `null` unless the payment was priced in Naira.
+
+`prize` (and `data` on `prize.created`) is `{ id, app, app_name, host, pot_usd, pot_ngn, max_players, player_count, join_deadline, resolve_deadline, dispute_secs, dispute_ends, status, winners, corrected, reference, interaction_id, joined, is_host }`, the same shape `zend.prize.get` returns. In webhooks, `joined` and `is_host` are always `false`. `status` is `open`, `resolved`, `paid` or `refunded`. `winners` is `[{ address, amount_usd, app_user_id }]` once there's a result. `digest` is the Sui transaction digest of the step that changed the prize.
 
 ## Verify signatures
 

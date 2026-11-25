@@ -114,7 +114,7 @@ if (!unlocked) return res.status(403).json({ error: "NO_ACCESS" });
 ```
 
 - Access follows the receipt. A friend you give your copy to can read; you can't any more.
-- A purchase made in the last few minutes counts straight away, even before Sui's index catches up.
+- A purchase or gift made through Zend in the last 5 minutes counts straight away, even before Sui's index catches up.
 - Don't put the content in a public URL. Anyone who has the URL can read it.
 
 ## 3. Sell it (page)
@@ -175,7 +175,7 @@ A purchase also sends `payment.completed` with each part in `parts`. Changing a 
 
 ## Costs
 
-The buyer pays the price and nothing else. Listing, changing a listing, each purchase and each gift come out of your app's monthly [network budget](/ship/limits#network-budget). Opening content costs nothing.
+The buyer pays the price and nothing else. Listing, changing a listing, each purchase and each gift come out of your app's monthly [network budget](/ship/limits#network-budget), at the network fee each one actually cost. [`zend apps info`](/cli/apps#info) shows what you've used. Checking access costs nothing.
 
 ## Check it yourself
 

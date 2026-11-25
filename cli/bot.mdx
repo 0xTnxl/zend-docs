@@ -1,11 +1,11 @@
 ---
 title: "zend bot"
-description: "Create bot accounts, and message, post and pay as them."
+description: "Create bot accounts, message, post and pay as them, and change their settings."
 ---
 
 Bot accounts are Zend accounts that your code runs. See [Bot accounts](/bots) for what they can do and the limits you set.
 
-Every command except `create` and `list` takes the bot's @handle and uses the key saved in `~/.zend/bots/<handle>.json`.
+Every command except `create`, `list` and `settings` takes the bot's @handle and uses the key saved in `~/.zend/bots/<handle>.json`. `settings` signs in as you, the owner, with the key from `zend login`.
 
 ## create
 
@@ -18,6 +18,8 @@ Generates the bot's signing key locally, asks you to approve the bot in the Zend
 `create` doesn't need `zend login`. You approve it on your phone instead, which needs a Zend account that has passed the verified person check and signs in with Google.
 
 If you deny the request or it expires, the local file stays without an API key, and `create` refuses that handle until you delete the file.
+
+Leave the command running until it says the bot is ready. The key can only be collected within 10 minutes of approval; after that the bot exists but can't get a key.
 
 ## list
 
@@ -66,7 +68,7 @@ zend bot say <handle> <to> <text...>
 zend bot say matchbot @alice "Your match is at 6"
 ```
 
-Opens the chat with `@alice` and sends the message. Needs the `dm_send` scope. It fails with `FIRST_CONTACT_OFF` unless Alice has written to the bot first or you turned on first contact for it.
+Opens the chat with `@alice` and sends the message. Needs the `dm_send` scope. It fails with `FIRST_CONTACT_OFF` unless Alice has written to the bot first, uses the ZApp the bot is linked to, or you turned on first contact for it. `say` sends no `client_id`, so running it twice sends twice.
 
 ## post
 
@@ -74,7 +76,7 @@ Opens the chat with `@alice` and sends the message. Needs the `dm_send` scope. I
 zend bot post <handle> <text...>
 ```
 
-Posts to the Feed as the bot. Needs `post_card`. Only you and people who have chatted with or paid the bot see it. Up to 280 characters, 6 an hour.
+Posts to the Feed as the bot. Needs `post_card`. Only you and people who have chatted with the bot, paid it or been paid by it see it. Up to 280 characters, 6 an hour and 30 a day.
 
 ## pay
 
@@ -102,7 +104,7 @@ Moves money the bot received into its spendable balance. Run it if `pay` fails w
 zend bot events <handle> [--after <seq>] [--follow]
 ```
 
-Prints the bot's events from the last 7 days. `--follow` keeps the connection open and prints each event as it happens, which is a quick way to see what your bot would receive.
+Prints up to 100 of the bot's events after `--after` (default `0`, so the oldest of the last 7 days come first). `--follow` keeps the connection open and prints each event as it happens. It starts from `--after` too, so it replays every kept event first; pass the last `seq` you saw to see only new ones.
 
 ## webhook
 
@@ -113,4 +115,59 @@ zend bot webhook test <handle>
 zend bot webhook delete <handle>
 ```
 
-`set` registers your server and prints the signing secret once. `test` sends a `bot.ping` and says what your server answered. `show` includes how the last delivery went. See [events and webhooks](/bots#events-and-webhooks).
+`set` registers your server and prints the signing secret once. `test` sends a `bot.ping` and says what your server answered. `show` prints `last_status`, `last_error` and `last_delivery_at`. See [events and webhooks](/bots#events-and-webhooks).
+
+## settings
+
+```bash
+zend bot settings <handle>
+zend bot settings <handle> [--first-contact on|off] [--posting on|off] [--per-payment <amount>] \
+  [--per-day <amount>] [--allow <handles>] [--allow-anyone] [--rpm <n>]
+```
+
+Shows or changes a bot's [limits](/bots#limits-you-set). Needs CLI 0.5.1 or later. Run `zend login` first: `settings` signs in as you, the bot's owner, with the key from `zend login`. It doesn't use the bot's key, and it only finds bots you own.
+
+With no options it prints the bot's settings, whether it's paused, and the ZApp it's linked to:
+
+```text
+$ zend bot settings matchbot
+@matchbot  Match Reminder
+  from app       Kobolt (kobolt): can message people who connected it
+  first contact  off
+  posting        on
+  per payment    5
+  per day        20
+  pays           anyone
+  requests/min   60
+```
+
+| Option | Sets |
+|---|---|
+| `--first-contact on\|off` | `on`: the bot can message anyone. `off`: only people who wrote first or use its ZApp |
+| `--posting on\|off` | Whether it can post to the feed |
+| `--per-payment <amount>` | Most it sends in one payment, in dollars. Up to 499 |
+| `--per-day <amount>` | Most it sends in 24 hours, in dollars. Not below the per-payment limit, up to 100,000 |
+| `--allow <handles>` | Only pay these people, comma-separated. `--allow ""` means it can pay nobody |
+| `--allow-anyone` | Pay anyone |
+| `--rpm <n>` | Requests a minute, 1–600 |
+
+Changes that limit the bot apply at once and print `Done.` Changes to `--rpm` also apply at once, up or down.
+
+Changes that let the bot do more need your approval on your phone: a higher per-payment or daily limit, new people in `--allow`, `--allow-anyone`, `--first-contact on` or `--posting on`. The command prints what will change, a `https://zdfi.me/bot-settings/<code>` link and a QR code, then waits. Open the link in the Zend app, check the changes, and confirm it's you. The command finishes when you approve or deny.
+
+```text
+$ zend bot settings matchbot --first-contact on
+This lets @matchbot do more, so approve it in the Zend App:
+  - Message anyone, not only people who wrote to it first
+  https://zdfi.me/bot-settings/Xk3…
+Waiting for approval (expires 2026-11-24T14:32:00Z)...
+...
+Done. @matchbot has its new settings.
+```
+
+- The link lasts 10 minutes. After that, run the command again.
+- One request can be open per bot. A new request replaces the open one, and the older command stops with "Not approved".
+- A request that mixes tighter and looser changes waits for approval, and then applies all of them.
+- Out-of-range values fail with `INVALID_LIMITS`.
+
+There are no commands yet to pause, resume, rename the bot, read its messages or delete a post. The [Bot SDK](/reference/bot-sdk) can rename, read messages and delete posts.

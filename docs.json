@@ -83,7 +83,8 @@
             "group": "Examples",
             "pages": [
               "examples/coinflip",
-              "examples/owambe"
+              "examples/owambe",
+              "examples/zapp-check"
             ]
           }
         ]

@@ -14,7 +14,7 @@ Bot accounts are new. Messaging, payments, posting and events are built but have
 ## Before you start
 
 - You need a Zend account that has passed Zend's **verified person** check, and you need to sign in with Google. Other sign-in methods can't approve bots yet.
-- You can own up to 5 bots, and bots can't own bots.
+- You can own up to 5 bots, and bots can't own bots. Bots can't be deleted yet, so the 5 slots are for good.
 - Approving a bot needs you to confirm it's you in the Zend app.
 
 ## Create a bot
@@ -32,7 +32,7 @@ zend bot create "Match Reminder" --handle matchbot \
     The CLI prints a link and a QR code. Open it in the Zend app, check the name, handle and what it will be able to do, tap **Make bot**, and confirm it's you. The request expires after 10 minutes.
   </Step>
   <Step title="The CLI saves the bot's API key">
-    Once approved, the CLI collects the bot's API key (`zbot_live_...`) once and saves it next to the signing key.
+    Once approved, the CLI collects the bot's API key (`zbot_live_...`) once and saves it next to the signing key. Keep the command running: the key can only be collected within 10 minutes of approval, and a bot whose key wasn't collected can't get another one.
   </Step>
 </Steps>
 
@@ -48,16 +48,16 @@ Waiting for approval (expires 2026-11-17T14:32:00Z)...
 | Option | Rules |
 |---|---|
 | `<name>` | 1–40 characters. Shown as the bot's name |
-| `--handle` | 3–20 characters of `a-z`, `0-9`, `.` and `_`, not starting or ending with `.` or `_`. Must be free |
+| `--handle` | 3–20 characters of `a-z`, `0-9`, `.` and `_`, not starting or ending with `.` or `_`. Must never have been used by any account |
 | `--scopes` | Comma-separated. Default `read` |
 
 | Scope | Allows |
 |---|---|
-| `read` | Read its profile, balance, chats and messages, and rename itself |
+| `read` | Read its profile, balance, chats and messages, mark chats read, rename itself, read its events and manage its webhook |
 | `dm_send` | Open chats and send messages |
 | `post_card` | Post to the feed |
-| `send_money` | Send money within the limits you set |
-| `receive_money` | Receive money |
+| `send_money` | Send money within the limits you set, and run the deposit step |
+| `receive_money` | Reserved. Not checked yet: anyone can pay a bot by its @handle, with or without it |
 
 Scopes are fixed when you approve the bot.
 
@@ -82,13 +82,16 @@ curl https://api.usezend.app/api/v1/bot/me \
     "per_day": 20,
     "recipient_allowlist": null,
     "dm_first_contact": false
-  }
+  },
+  "app": { "slug": "kobolt", "name": "Kobolt" }
 }
 ```
 
-- Each key lasts 90 days.
-- Each bot can make 60 requests a minute by default (`RATE_LIMITED` past that).
-- A paused bot gets `403 BOT_SUSPENDED`.
+`app` is the ZApp the bot is linked to (see [Link it to your ZApp](#link-it-to-your-zapp)), or `null` when it isn't linked or that app is suspended.
+
+- Each key lasts 90 days. After that the bot gets `INVALID_API_KEY`, and the key can't be renewed yet.
+- Each bot can make 60 requests a minute by default, counted per calendar minute (`429 RATE_LIMITED` past that). The owner can set 1–600.
+- A paused bot gets `403 BOT_SUSPENDED` on every call, including events. Webhook deliveries continue, so a webhook still receives `bot.paused`.
 
 ## Events and webhooks
 
@@ -97,11 +100,11 @@ A bot doesn't have to poll. Zend records what happens to it and gives it to you 
 | Event | When |
 |---|---|
 | `message.received` | Someone sent the bot a message. `data`: `room_id`, `message_id`, `message_type`, `text` (text messages only), `from { user_id, handle }`, `created_at` |
-| `payment.received` | Someone paid the bot by @handle. `data`: `transfer_id`, `from`, `amount_usdc`, `note` |
+| `payment.received` | Someone sent money to the bot by @handle. `data`: `transfer_id`, `from { user_id, handle }`, `amount_usdc` (a string, in dollars), `note`. Not sent for money links or bank top-ups |
 | `post.comment` | Someone commented on the bot's post. `data`: `post_id`, `comment_id`, `text`, `from` |
 | `post.reaction` | Someone reacted to the bot's post. `data`: `post_id`, `emoji`, `from` |
-| `bot.paused` / `bot.resumed` | The owner paused or resumed the bot |
-| `bot.ping` | A test from `webhook/test` |
+| `bot.paused` / `bot.resumed` | The owner paused or resumed the bot. `data` is `{}` |
+| `bot.ping` | A test from `webhook/test`. Sent to the webhook only, not stored or retried |
 
 Every event looks like this:
 
@@ -119,11 +122,11 @@ curl -N https://api.usezend.app/api/v1/bot/events/stream \
   -H "Authorization: Bearer $ZEND_BOT_KEY" -H "Last-Event-ID: 40"
 ```
 
-A server-sent events connection that sends each event as it happens. Start where you left off with the `Last-Event-ID` header or `?after=<seq>`. With neither, you get new events only. The connection closes after an hour, so reconnect with the last `seq` you saw. The [Bot SDK](/reference/bot-sdk) does this for you.
+A server-sent events connection that sends each event as it happens. Each SSE message has `id:` set to the `seq` and `event:` set to the type. Start where you left off with the `Last-Event-ID` header or `?after=<seq>`; the header wins if you send both. With neither, you get new events only. A keep-alive comment goes out every 15 seconds, and an event can take up to 5 seconds to arrive. The connection closes after an hour, so reconnect with the last `seq` you saw. The [Bot SDK](/reference/bot-sdk) does this for you.
 
 ### Poll
 
-`GET /api/v1/bot/events?after=<seq>&limit=100` returns `{ "events": [...], "next": <seq> }`, oldest first. Send `next` back as `after`.
+`GET /api/v1/bot/events?after=<seq>&limit=100` returns `{ "events": [...], "next": <seq> }`, oldest first. Send `next` back as `after`. `limit` defaults to 100, up to 500. Without `after`, you start from the oldest event kept.
 
 ### Webhook
 
@@ -135,11 +138,11 @@ zend bot webhook set matchbot https://example.com/zend --events message.received
 zend bot webhook test matchbot
 ```
 
-- The address must be `https`, use a public website name (not a number or `localhost`) and port 443 or 8443. Zend refuses addresses that lead somewhere private, and doesn't follow redirects.
-- A bot has one webhook. `events` limits which types it receives. Leave it out for all.
-- Answer with a `2xx` within 10 seconds. Otherwise Zend retries after 10 seconds, doubling each time, up to 12 tries.
-- Each request has `x-zend-signature: t=<unix>,v1=<hex>` and `x-zend-event-id`. The signature is an HMAC-SHA256 of `"<t>.<body>"` with your secret. Check it, and reject a `t` more than 5 minutes old. `verifyWebhook` in the [Bot SDK](/reference/bot-sdk#webhooks) does both.
-- `GET /webhook` shows the URL and how the last delivery went. `PUT /webhook` with `"rotate": true` makes a new secret.
+- The address must be `https`, use a public website name (not a number, `localhost`, `.local` or `.internal`, and with a dot in it) and port 443 or 8443, with no name or password in it. Zend checks the address again at each delivery, refuses ones that lead somewhere private, and doesn't follow redirects. A bad address returns `INVALID_WEBHOOK_URL`.
+- A bot has one webhook. `events` limits which types it receives (`INVALID_EVENTS` for an unknown name). Leave it out for all; a later `PUT` without `events` goes back to all.
+- Answer with a `2xx` within 10 seconds. Anything else, including a redirect, counts as a failure. Zend retries after 10 seconds, doubling each time, up to 12 tries (about 6 hours in all).
+- Each request has `x-zend-signature: t=<unix>,v1=<hex>` and `x-zend-event-id`, the same scheme as [ZApp webhooks](/reference/webhooks#verify-signatures). The signature is an HMAC-SHA256 of `"<t>.<body>"` with your secret. Check it, and reject a `t` more than 5 minutes old. `verifyWebhook` in the [Bot SDK](/reference/bot-sdk#webhooks) does both.
+- `GET /webhook` returns `{ configured, url, events, last_status, last_error, last_delivery_at }`. `last_status` is `"ok <code>"` or `"failing"`. `PUT /webhook` with `"rotate": true` makes a new secret.
 
 ## Messages
 
@@ -158,10 +161,59 @@ curl -X POST https://api.usezend.app/api/v1/bot/dm/$ROOM/messages \
 ```
 
 - `GET /dm` lists the bot's chats, `GET /dm/:room_id/messages` reads one, and `POST /dm/:room_id/read` with `{ "last_message_id": "…" }` marks it read.
-- Send `client_id` to make a retry safe. The same `client_id` never sends twice.
+- Send `client_id` (1–100 characters) to make a retry safe. The same `client_id` never sends twice. Without one, or with a longer one, Zend makes a random id and a retry can send twice.
+- `GET /dm/:room_id/messages` returns up to 50 messages by default, up to 100.
 - Messages are plain text. Blocks, delivery, push notifications and the 60-messages-a-minute limit work as they do for people.
-- A bot can write to someone only after that person has written to it. You can turn on first contact for a bot, and then it can start chats (`FIRST_CONTACT_OFF` until then).
-- If someone blocks the bot, sends fail with `USER_BLOCKED`.
+- Links to a ZApp in a message open that app inside Zend. See [Links in messages](#links-in-messages).
+- If someone blocks the bot, or the bot blocks them, opening the chat and sending fail with `USER_BLOCKED`.
+
+### Who a bot can message
+
+Zend checks this when the bot opens a chat and on every send. A bot can message a person when any of these is true:
+
+| Rule | Details |
+|---|---|
+| First contact is on | The owner turned it on with [`zend bot settings <handle> --first-contact on`](/cli/bot#settings). It's off for new bots |
+| The person uses the bot's ZApp | They connected the app the bot is [linked to](#link-it-to-your-zapp), haven't disconnected or muted it, and the app isn't suspended |
+| The person wrote first | They've sent the bot at least one message in their chat |
+
+Otherwise the call fails with `403 FIRST_CONTACT_OFF`. A block always wins, whatever the rules above say.
+
+## Link it to your ZApp
+
+Name the bot in your ZApp's manifest to make it the app's own automated account:
+
+```json zapp.json
+{ "app": "kobolt", "bot": "kobolt_bot" }
+```
+
+The bot must be one you own and it must be active. One bot can be linked to one app. See the manifest's [`bot`](/guides/manifest#fields) field for the rules and errors. Once you deploy the manifest:
+
+- The consent sheet for your app adds: "@kobolt_bot, its automated account, can message you about what you do in Kobolt."
+- The bot can message everyone who connected the app, without them writing first (see [Who a bot can message](#who-a-bot-can-message)).
+- In the Zend app, the bot shows **Automated · from Kobolt** under its name in the chat header and on its profile. Tapping it opens the app.
+- `GET /me` and `bot.me()` return `app: { slug, name }`.
+- Wherever Zend describes the bot to people (chat lists, opened chats and profiles), it carries `automated: true` and `automated_app: { slug, name }`.
+
+While the app is suspended, the link has no effect: no "from" line, `app` is `null`, and the bot needs first contact or a message from the person to write to them.
+
+### Links in messages
+
+When a chat message (from a bot or anyone else) contains one of these links, Zend makes it tappable and opens the ZApp inside Zend:
+
+| Link | Opens |
+|---|---|
+| `app.usezend.app/apps/<slug>?…` | The app's entry page, with the link's parameters |
+| `app.usezend.app/i/int_…` | The app on that interaction |
+
+- `https://` is optional. The slug is 2–31 characters of `a-z`, `0-9` and `-`.
+- Parameters follow the [room link rules](/guides/people#room-links): up to 8, keys like `deal` or `ref_2`, values up to 256 characters, and `interaction`, `start` and `from` are dropped.
+- Punctuation at the end of a sentence isn't part of the link.
+- Other links stay plain text.
+
+```ts
+await ctx.reply("Your deal is ready: https://app.usezend.app/apps/kobolt?deal=12");
+```
 
 ## Get paid and pay
 
@@ -181,11 +233,11 @@ A bot signs its own payments. Zend builds the payment, checks your limits, and s
     Sign those exact bytes with the bot's key: ed25519 over the blake2b-256 hash of `[0, 0, 0]` followed by the bytes. Send the result as base64 of one flag byte (`0x00`), the 64-byte signature and the 32-byte public key. `zend bot pay` does this for you.
   </Step>
   <Step title="Submit">
-    `POST /pay/submit` with `{ "transaction_data_bcs": "…", "signature": "…", "note": "Thanks" }`. Zend accepts only the bytes it prepared, once, within 5 minutes. A different or repeated payload fails with `NOT_PREPARED`.
+    `POST /pay/submit` with `{ "transaction_data_bcs": "…", "signature": "…", "note": "Thanks" }`. `note` is cut to 140 characters. One payment at a time per bot; a second submit gets `BUSY`. Zend accepts only the bytes it prepared, once, within 5 minutes. A different or repeated payload fails with `NOT_PREPARED`.
   </Step>
 </Steps>
 
-Money a bot receives can sit in a form it can't spend yet. If a payment fails with `SUI_ADDRESS_BALANCE_INSUFFICIENT`, run the deposit step: `POST /pay/deposit/prepare`, sign the same way, then `POST /pay/deposit/submit` (`zend bot deposit` does both). It moves the bot's own funds and sends nothing to anyone else.
+Money a bot receives can sit in a form it can't spend yet. If a payment fails with `SUI_ADDRESS_BALANCE_INSUFFICIENT`, run the deposit step: `POST /pay/deposit/prepare`, sign the same way, then `POST /pay/deposit/submit` (`zend bot deposit` does both). Needs `send_money`. It moves the bot's own funds and sends nothing to anyone else.
 
 Because Zend builds the payment, the amount and person your limits check are the ones inside the signed bytes. A bot can't sign a big payment and have it counted as a small one. The limits apply to payments sent through Zend.
 
@@ -201,9 +253,9 @@ curl -X POST https://api.usezend.app/api/v1/bot/posts \
 A post is a card in the Feed, with the bot's avatar and name, the **Automated** mark, the text, reactions and comments, the same as any other card. `DELETE /posts/:id` removes one of the bot's own posts.
 
 - Text is 1–280 characters and follows the same plain-language rule as [ZApp cards](/ship/copy-guide). A rejected word returns `PLAIN_LANGUAGE`.
-- A bot can post 6 an hour and 30 a day (`POST_LIMIT`).
-- The same `client_id` never posts twice.
-- Only you and people who have chatted with the bot, paid it or been paid by it see its posts. Strangers never do. Blocking the bot hides them.
+- A bot can post 6 in the last hour and 30 in the last 24 hours (`429 POST_LIMIT`). Deleted posts still count.
+- The same `client_id` (up to 100 characters) never posts twice. A retry returns the existing post's id.
+- Only you and people who have chatted with the bot, paid it or been paid by it see its posts. Strangers never do. Blocking the bot, either way, hides them, and so does pausing it.
 - You can turn a bot's posting off. Then posting returns `POSTING_OFF`.
 
 ## Limits you set
@@ -219,31 +271,39 @@ Every bot has limits that apply whenever it acts without a person present. They'
 | Posting | On |
 | Requests a minute | 60 (1–600) |
 
-Lowering a limit takes effect at once. Raising a money limit, widening who it can pay, turning on first-contact messages or turning on posting needs you to confirm it's you. You can also pause and resume a bot, which stops its calls and hides its posts. The Zend app doesn't have a screen for these yet. The owner routes are in the [REST API](/reference/rest-api#bot-accounts).
+Change them with [`zend bot settings`](/cli/bot#settings) after `zend login` (CLI 0.5.1 or later). Lowering a limit, narrowing who it can pay, turning first contact or posting off, and changing requests a minute take effect at once. Raising a money limit, widening who it can pay, allowing anyone, turning first contact on or turning posting on prints a `zdfi.me/bot-settings/…` link instead: you approve it in the Zend app and confirm it's you, so a stolen login key alone can't loosen a bot. The link lasts 10 minutes, and a new request replaces the open one.
+
+A paused bot's calls stop and its posts are hidden. Only the owner can pause or resume a bot, and there's no button in the Zend app or CLI command for it yet.
 
 ## Keep the keys safe
 
 - The signing key in `~/.zend/bots/<handle>.json` controls the bot's account and its money. Zend never sees it and can't recover it.
 - Treat the `zbot_live_` key like a password. Don't commit it or send it to a browser.
-- There's no way to issue a new key for an existing bot yet. Back up the bot file. A key expires after 90 days.
+- There's no way to issue a new key, rotate or revoke a key, or delete a bot yet. Back up the bot file. A key expires after 90 days.
 
 ## Errors
 
 | Code | Meaning |
 |---|---|
 | `INVALID_NAME` / `INVALID_HANDLE` / `INVALID_SCOPE` / `INVALID_ADDRESS` | Fix the request |
+| `ADDRESS_IN_USE` | The bot's address already belongs to an account. Make a new bot file |
+| `INVALID_LIMITS` | A setting is out of range: per payment above $499, a day limit below the per-payment limit or above $100,000, or requests a minute outside 1–600 |
+| `STEP_UP_CHECK_FAILED` | Zend couldn't check the confirmation. Try again |
+| `REQUEST_NOT_PENDING` | That settings link expired or was already answered |
+| `INVALID_WEBHOOK_URL` / `INVALID_EVENTS` | Fix the webhook address or event names |
+| `NO_WEBHOOK` | Set a webhook before testing it |
 | `HANDLE_TAKEN` | Pick another handle |
 | `NEEDS_HUMAN_CHECK` | Pass the verified person check in the Zend app first |
 | `TOO_MANY_BOTS` | You already own 5 bots |
 | `NOT_ALLOWED` | This kind of account can't make bots |
 | `STEP_UP_REQUIRED` | Confirm it's you, then try again |
 | `SESSION_NOT_PENDING` | The request expired or was already answered. Run `zend bot create` again |
-| `SESSION_INVALIDATED` | The key was already collected |
-| `INVALID_API_KEY` | Missing, wrong or expired `zbot_live_` key |
+| `SESSION_INVALIDATED` | The key was already collected, the bot wasn't approved, or the 10 minutes to collect it passed |
+| `INVALID_API_KEY` | Missing, wrong or expired `zbot_live_` key, or a bot that's no longer active |
 | `INSUFFICIENT_SCOPE` | The key doesn't have the scope for this call |
-| `BOT_SUSPENDED` | You paused the bot |
+| `BOT_SUSPENDED` | The bot is paused |
 | `RATE_LIMITED` | Over the bot's requests a minute |
-| `FIRST_CONTACT_OFF` | The bot can only reply to people who wrote first |
+| `FIRST_CONTACT_OFF` | The person hasn't written to the bot and doesn't use its ZApp, and first contact is off. See [Who a bot can message](#who-a-bot-can-message) |
 | `USER_BLOCKED` | The other account blocked the bot, or the bot blocked them |
 | `USER_NOT_FOUND` | No one has that @handle |
 | `NOT_SUPPORTED` | Bots can't use group chats |

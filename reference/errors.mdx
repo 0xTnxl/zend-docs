@@ -106,10 +106,14 @@ try {
 | `INVALID_ITEM` / `TITLE_TOO_LONG` / `INVALID_PAYEE` / `INVALID_UPDATE` | Fix the listing request |
 | `NOT_FOR_SALE` | The listing is paused |
 | `ALREADY_UNLOCKED` / `OWN_ITEM` | They have it already, or the buyer is a payee |
-| `NOT_UNLOCKED` / `NO_ACCESS` / `WRONG_ITEM` | No receipt, or the bytes are for another listing |
-| `TOO_LARGE` | Over 10 MB for one `read` |
-| `UNLOCK_UNAVAILABLE` / `UNAVAILABLE` | Try later |
+| `NOT_UNLOCKED` / `NO_ACCESS` | No receipt. `requireAccess` throws `NO_ACCESS` (403) |
+| `UNLOCK_UNAVAILABLE` / `UNAVAILABLE` | `unlock.read` isn't turned on yet. Serve content from your server after `requireAccess` |
+| `WRONG_ITEM` / `TOO_LARGE` | Only once `unlock.read` is on: the bytes are for another listing, or over 10 MB |
 | `SAFETY_STOP` | Zend refused to confirm what was prepared. Nothing moved |
+
+## Bot accounts
+
+See [Bot accounts](/bots#errors) and the [Bot SDK](/reference/bot-sdk#pay).
 
 ## Draws and live rooms
 
@@ -127,7 +131,11 @@ try {
 | Code | Meaning / what to do |
 |---|---|
 | `PRIZE_NOT_FOUND` | Wrong prize ID |
+| `INVALID_DEADLINES` | Join, results or dispute times are outside the [rules](/money/prizes#timing) |
+| `INVALID_MAX_PLAYERS` | `maxPlayers` must be 1–500 |
 | `JOIN_CLOSED` | The join deadline passed |
+| `TOO_EARLY` | Results can only be sent once joining closes. The message has the closing time |
+| `RESULT_DEADLINE_PASSED` | No result before the deadline. The prize goes back to the host |
 | `NOT_HOST` | Only the host can cancel |
 | `WINDOW_CLOSED` | Too late to cancel |
 | `NO_RESOLVER_KEY` | Add `resolverKey` to your manifest |

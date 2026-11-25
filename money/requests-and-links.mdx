@@ -33,7 +33,7 @@ Needs `request_payment`.
 | Param | Notes |
 |---|---|
 | `amount` / `price` | Omit both to let payers choose the amount |
-| `note` | Shown to payers |
+| `note` | Shown to payers. Up to 140 characters |
 | `maxPayments` | How many times the link can be paid |
 | `reference` | Up to 64 characters |
 
@@ -84,9 +84,9 @@ Needs `create_link`.
 
 | Param | Notes |
 |---|---|
-| `amount` / `price` | Per person. At least $1 |
+| `amount` / `price` | Per person. At least $0.10 today. The whole link (amount × `uses`) can hold at most $20 today, and no more than your [tier](/ship/limits) allows |
 | `uses` | 1–100 people. Default 1 |
-| `note` | Shown to collectors |
+| `note` | Shown to collectors. Up to 140 characters |
 | `reference` | Up to 64 characters. Stored with the link |
 
 Zend opens its own share sheet. Your app gets `{ id, status }` and never sees the link itself, so a page can't leak it. Each collection sends a `link.claimed` webhook:
@@ -109,8 +109,11 @@ Zend opens its own share sheet. Your app gets `{ id, status }` and never sees th
 
 | Code | Meaning |
 |---|---|
-| `BELOW_MINIMUM` | Under $1 per person |
-| `ABOVE_LINK_MAXIMUM` | Over the Zend-wide per-link cap |
+| `BELOW_MINIMUM` | Under the minimum per person (currently $0.10) |
+| `INVALID_USES` | `uses` must be 1–100 |
+| `MEMO_TOO_LONG` | `note` over 140 characters |
+| `LINKS_PILOT_ONLY` / `ZLINKS_DISABLED` | Money links aren't open to this user yet |
+| `ABOVE_LINK_MAXIMUM` | Over the Zend-wide cap for one link (currently $20, all uses together) |
 | `APP_LIMIT_USES` | More people than your tier allows per link |
 | `LINKS_AT_CAPACITY` | Zend-wide link capacity reached; try later |
 | `APP_GAS_BUDGET` | Your app's monthly network budget is used up. See [Limits](/ship/limits#network-budget) |

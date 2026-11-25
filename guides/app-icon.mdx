@@ -50,10 +50,10 @@ curl -X PUT https://api.usezend.app/api/zend/v2/apps/server/icon \
 A private app's icon is live at once:
 
 ```json
-{ "status": "live", "icon_url": "https://media.zendfi.app/zapps/6b0f.../3f9a1c2e.png" }
+{ "status": "live", "icon_url": "https://media.zendfi.app/zapps/6b0f.../3f9a1c2e8b4d7a60.png" }
 ```
 
-Every upload gets a new URL, so nobody sees an old copy from a cache.
+A changed icon gets a new URL, so nobody sees an old copy from a cache. Uploading the same image again keeps the same URL.
 
 ## Public apps
 
@@ -62,12 +62,12 @@ A public app's new icon is reviewed before it shows. Your current icon stays unt
 ```json
 {
   "status": "pending_review",
-  "pending_icon_url": "https://media.zendfi.app/zapps/6b0f.../8c2d4e1f.png",
+  "pending_icon_url": "https://media.zendfi.app/zapps/6b0f.../8c2d4e1f90a3b5c7.png",
   "message": "Your new icon will show once it's reviewed. The current one stays until then."
 }
 ```
 
-[`zend apps info`](/cli/apps#info) shows the waiting icon. Icons that copy Zend's logo or another brand's, or that could mislead people about who made the app, are rejected. See [Public apps](/ship/public-apps).
+[`zend apps info`](/cli/apps#info) shows the waiting icon. Uploading again before it's reviewed replaces the waiting one. Icons that copy Zend's logo or another brand's, or that could mislead people about who made the app, are rejected. See [Public apps](/ship/public-apps).
 
 ## Errors
 
@@ -79,5 +79,6 @@ A public app's new icon is reviewed before it shows. Your current icon stays unt
 | `ICON_NOT_SQUARE` | Width and height differ |
 | `ICON_TOO_SMALL` | Under 256 × 256 |
 | `ICON_UNREADABLE` | The image is damaged, or over 4096 × 4096 |
-| `ICON_STORAGE_UNAVAILABLE` | Zend couldn't store it. Try again |
+| `ICON_STORAGE_UNAVAILABLE` | Zend couldn't store it (503). Try again |
+| `APP_NOT_FOUND` | Wrong app id, or not your app |
 | `ICON_URL_NOT_ACCEPTED` | You sent `icon_url` when creating an app. Upload the image instead |

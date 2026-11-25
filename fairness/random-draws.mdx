@@ -57,7 +57,7 @@ curl -X POST https://api.usezend.app/api/zend/v2/apps/server/random \
   -d '{"interaction_id":"int_...","label":"winners","kind":"pick","n":300,"k":3}'
 ```
 
-Your server also receives a `random.drawn` webhook for every draw, from a page or from your server.
+Your server also receives a [`random.drawn`](/reference/webhooks#events) webhook for every draw, from a page or from your server. Its `data` is the result with snake_case keys: `{ interaction_id, label, kind, n, k, value, transaction_id, attestation, verify }`.
 
 ## Show that a result was checked
 

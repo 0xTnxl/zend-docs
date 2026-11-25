@@ -108,6 +108,15 @@ Your app link keeps its query parameters through sign-in, so a link like `https:
 - `interaction`, `start` and `from` are dropped, because Zend sets those itself (see [`zend.launch`](/reference/client-sdk#zend-launch)).
 - Invalid parameters are dropped silently.
 
+### Links in chat messages
+
+Anyone can paste your app link or an interaction link into a Zend chat, and so can your app's [bot](/bots#link-it-to-your-zapp). Zend makes these links tappable and opens your app inside Zend, with the same parameter rules as above:
+
+- `app.usezend.app/apps/<slug>?…`, with or without `https://`. The slug is 2–31 characters of `a-z`, `0-9` and `-`.
+- `app.usezend.app/i/int_…`.
+
+Other links in messages stay plain text.
+
 ## Keep blocked people apart
 
 If your server matches strangers into rooms, ask Zend which of them must not share one:

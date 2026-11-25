@@ -20,7 +20,7 @@
 - `reference/`: client SDK, server SDK, REST API, webhooks, errors.
 - `cli/`: one page per command group.
 - `pay-with-zend`, `bots`: building outside ZApps.
-- `examples/`: Coin Flip (no server) and Owambe Rooms (server-run rooms, connect).
+- `examples/`: Coin Flip (no server), Owambe Rooms (server-run rooms, connect) and ZApp Check (a test app with a linked bot and a prize).
 
 ## Positioning
 - Zend is "the money network for the internet". Developer line: "Build on the money network for the internet."

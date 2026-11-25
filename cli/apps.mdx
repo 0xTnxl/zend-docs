@@ -27,6 +27,8 @@ Slugs are 2–31 characters of `a-z`, `0-9` and `-`. You can have up to 10 apps.
 
 `--icon` uploads your [app icon](/guides/app-icon) straight after creating the app.
 
+The keys print before the icon uploads. If Zend refuses the icon (for example, it isn't square), the app is still created and your keys are already shown; fix the image and run `zend apps icon`.
+
 ## list
 
 ```bash
@@ -88,7 +90,7 @@ zend apps icon <slug> <file>
 Uploads your [app icon](/guides/app-icon): a square PNG, JPEG or WebP, at least 256 × 256, up to 1 MB. The CLI checks the file type and size before uploading; Zend checks the rest.
 
 ```text
-Icon is live: https://media.zendfi.app/zapps/6b0f.../3f9a1c2e.png
+Icon is live: https://media.zendfi.app/zapps/6b0f.../3f9a1c2e8b4d7a60.png
 ```
 
 For a public app, the new icon waits for review and your current one stays until then:
@@ -97,7 +99,9 @@ For a public app, the new icon waits for review and your current one stays until
 Icon uploaded. It shows once Zend reviews it; your current icon stays until then.
 ```
 
-If `ZEND_APP_KEY` is set, `icon` uses it instead of your login.
+If `ZEND_APP_KEY` is set, `icon` uses it instead of your login and sets the icon of the app that key belongs to. The `<slug>` isn't checked in that case.
+
+The CLI accepts `.png`, `.jpg`, `.jpeg` and `.webp` files.
 
 ## info
 

@@ -89,7 +89,13 @@ app.post("/webhooks/zend", express.text({ type: "*/*" }), (req, res) => {
 });
 ```
 
-Set where events go with `zend config set webhookUrl <url>`. Zend creates your webhook secret (`whsec_...`) the first time you set a URL. Signatures use the same `t=<unix>,v1=<hex>` scheme as [ZApp webhooks](/reference/webhooks#verify-signatures), and are rejected after 5 minutes.
+Set where events go with `zend config set webhookUrl <url>`. Zend creates your webhook secret (`whsec_...`) the first time you set a URL. Signatures use a `t=<unix>,v1=<hex>` header, and `verifyWebhookSignature` rejects them after 5 minutes. If you check by hand, the HMAC key is the hex after `whsec_`, decoded to bytes, not the string itself.
+
+<Warning>
+Zend doesn't show the `whsec_` secret yet: the API, SDKs and CLI only report whether one exists. Until it does, you can't check signatures on Pay with Zend webhooks. Confirm a payment with `getPaymentRequest(id)` before you act on a webhook.
+</Warning>
+
+Each delivery carries `X-Zend-Signature`, `X-Zend-Event` (the event name) and `X-Zend-Delivery` (a delivery id), and its body is `{ event, payment_request: { id, amount, description, status }, timestamp }`. Zend waits up to 30 seconds for your answer.
 
 | Event | When |
 |---|---|
@@ -127,7 +133,7 @@ A payer who pays by bank transfer finishes on Zend's own screen and isn't sent b
 const request = await zend.getPaymentRequest(payment.id);
 // { id, status, amount, description, expiresAt, paidAt, hasRedirectUrl, linkUrl }
 
-const { requests } = await zend.listPaymentRequests({ status: "paid", limit: 20 });
+const requests = await zend.listPaymentRequests({ status: "paid", limit: 20 });
 ```
 
 `status` is `pending`, `paid`, `expired` or `cancelled`.

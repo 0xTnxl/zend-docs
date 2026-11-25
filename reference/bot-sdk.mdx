@@ -26,7 +26,8 @@ await bot.start(); // listens until bot.stop()
 ## Create the client
 
 ```ts
-const bot = await ZendBot.fromFile("matchbot");                 // reads ~/.zend/bots/matchbot.json
+const bot = await ZendBot.fromFile("matchbot");                 // reads ~/.zend/bots/matchbot.json (or fromFile(handle, dir, baseUrl))
+const bot = ZendBot.fromEnv();                                  // on a server: ZEND_BOT_API_KEY, ZEND_BOT_PRIVATE_KEY, ZEND_BASE_URL
 const bot = new ZendBot({ apiKey, privateKey });                // or pass the keys yourself
 ```
 
@@ -37,7 +38,7 @@ const bot = new ZendBot({ apiKey, privateKey });                // or pass the k
 | `baseUrl` | Defaults to `https://api.usezend.app` |
 | `fetch` | Your own `fetch`, for tests |
 
-Keep both keys on your server. Don't ship them to a browser.
+Keep both keys on your server. Don't ship them to a browser. `fromFile` and `fromEnv` throw `NO_API_KEY` when there's no key yet.
 
 ## Listen and reply
 
@@ -53,12 +54,16 @@ bot.onError((e) => console.error(e));
 await bot.start();
 ```
 
-`start()` opens a stream and calls your handlers as events happen. It picks up where it left off after a dropped connection. Pass `{ mode: "poll", pollMs: 4000 }` to check for unread messages instead (at least 3000; a bot can make 60 requests a minute by default). Polling only calls `onMessage`.
+`start()` first answers any unread messages, then opens a stream and calls your handlers as events happen. It picks up where it left off after a dropped connection, but only within the same process. After a restart, the stream starts with new events, so payments, comments and reactions that happened while the bot was off are skipped. Store the last `event.seq` you handled and pass `start({ after: seq })` to replay them. If the server has no stream, the SDK falls back to polling. Pass `{ catchUp: false }` to skip the first step. Pass `{ mode: "poll", pollMs: 4000 }` to check for unread messages instead (at least 3000; a bot can make 60 requests a minute by default). Polling only calls `onMessage`.
 
+- `ctx.reply` sends with a fixed `client_id` per event, so a retry never answers twice. That also means a second `ctx.reply` in the same handler is dropped. To send more than one message, use `bot.send(msg.roomId, text, yourOwnId)`.
+- `ctx.pay({ amount, to?, note? })` pays the person who sent the message unless you give `to`.
 - Handlers get new text messages from other people, in order. Each message is marked read after your handler runs, even if your handler throws, so one bad message can't loop. Errors go to `onError`.
 - `bot.on(type, handler)` takes any [event type](/bots#events-and-webhooks), or `"*"` for all. The event is `{ seq, id, type, created_at, data }`.
 - `start()` stops by itself on `INVALID_API_KEY` or `BOT_SUSPENDED`. `bot.stop()` ends it.
-- A bot only answers people who wrote first, unless the owner turned on first contact.
+- A bot only messages people who wrote to it first, or who connected the ZApp it's linked to (manifest [`bot`](/bots#link-it-to-your-zapp)), unless the owner turned on first contact. Blocks always apply. Otherwise `send`, `say` and `openChat` fail with `FIRST_CONTACT_OFF`. See [Who a bot can message](/bots#who-a-bot-can-message).
+- Links to a ZApp in the bot's messages (`https://app.usezend.app/apps/<slug>?deal=12`) open that app inside Zend. See [Links in messages](/bots#links-in-messages).
+- The SDK can't change the bot's limits. The owner does that with [`zend bot settings <handle>`](/cli/bot#settings) after `zend login`.
 
 ## Webhooks
 
@@ -76,12 +81,16 @@ bot.onMessage(async (msg, ctx) => ctx.reply("Got it."));
 http.createServer(webhookHandler(process.env.ZEND_WEBHOOK_SECRET!, bot)).listen(3000);
 ```
 
-`webhookHandler` checks the signature and the timestamp, answers quickly, skips repeats and passes the event to your handlers. To do it yourself, read the raw body and call `verifyWebhook(secret, req.headers["x-zend-signature"], rawBody)`, then `bot.dispatch(JSON.parse(rawBody))`.
+`webhookHandler` checks the signature and the timestamp, answers `200` before running your handlers, skips repeats (it remembers the last 1,000 event ids in memory) and passes the event to your handlers. To do it yourself, read the raw body and call `verifyWebhook(secret, req.headers["x-zend-signature"], rawBody)`, then `bot.dispatch(JSON.parse(rawBody))`.
+
+<Warning>
+The bot `verifyWebhook` takes `(secret, signature, body)`. The ZApp server SDK's `verifyWebhook` takes `(body, signature, secret)`. Don't mix them up.
+</Warning>
 
 | Method | Does |
 |---|---|
 | `setWebhook({ url, events?, rotate? })` | Registers the webhook. Returns `secret` only when it's new |
-| `getWebhook()` | URL, events and how the last delivery went |
+| `getWebhook()` | `{ configured, url, events, last_status, last_error, last_delivery_at }` |
 | `testWebhook()` | Sends a `bot.ping` now and returns what your server answered |
 | `deleteWebhook()` | Removes it |
 | `events({ after, limit })` | Events after a number, for catching up |
@@ -90,19 +99,21 @@ http.createServer(webhookHandler(process.env.ZEND_WEBHOOK_SECRET!, bot)).listen(
 
 | Method | Does |
 |---|---|
-| `me()` | Profile, scopes and limits |
+| `me()` | Profile, scopes, limits, and `app`: the linked ZApp as `{ slug, name }`, or `null` |
 | `rename(name)` | Changes the bot's name |
 | `balance()` | `{ spendable, awaiting_deposit, wallet }` |
-| `chats()` | The bot's conversations |
-| `messages(roomId, { limit, cursor })` | Messages in a chat, newest first |
+| `chats()` | `{ threads }`, with unread counts |
+| `messages(roomId, { limit, cursor })` | `{ messages, next_cursor }`, newest first |
 | `openChat(handle)` | Opens a chat and returns its `room_id` |
-| `send(roomId, text, clientId?)` | Sends text. The same `clientId` never sends twice |
+| `send(roomId, text, clientId?)` | Sends text and returns `{ id, room_id, created_at }`. The same `clientId` never sends twice |
 | `say(handle, text, clientId?)` | Opens the chat and sends |
 | `markRead(roomId, messageId)` | Marks read |
 | `post(text, clientId?)` | Posts to the feed. Returns `{ id }` |
 | `deletePost(id)` | Removes a post |
 | `pay({ to, amount, note? })` | Pays `@to` within the owner's limits |
 | `deposit()` | Makes received money spendable |
+| `on(type, handler)` / `onMessage(handler)` / `onError(handler)` | Add handlers |
+| `start(options)` / `stop()` / `dispatch(event)` | Run the loop, or feed it events yourself |
 
 ## Pay
 
@@ -118,11 +129,11 @@ try {
 }
 ```
 
-See [Bot accounts](/bots#errors) for every code. `NETWORK` means the call never reached Zend. Reads retry on their own; a payment that fails with `NETWORK` may or may not have gone through, so check `balance()` before sending it again.
+See [Bot accounts](/bots#errors) for every server code. The SDK adds its own, all with `status` 0: `NETWORK` (the call never reached Zend), `NO_API_KEY`, `NO_SIGNING_KEY` (paying without `privateKey`), `NO_CHAT` (`ctx.reply` on an event with no chat) and `NO_RECIPIENT`. A server failure with no code comes back as `HTTP_ERROR` with the HTTP status. Reads retry on their own; a payment that fails with `NETWORK` may or may not have gone through, so check `balance()` before sending it again.
 
 ## Build a bot with a language model
 
-`examples/bots/assistant.mjs` in the package connects the loop to any chat-completions API. The model replies and may ask to pay someone. Your code decides whether to allow it:
+[`examples/bots/assistant.mjs`](https://github.com/zendfi/zend-appkit/tree/main/examples/bots) in the AppKit repo connects the loop to any chat-completions API. The model replies and may ask to pay someone. Your code decides whether to allow it:
 
 - Only the owner's messages can trigger a payment.
 - Payments above a cap you choose are refused in your code, before they reach Zend.
@@ -131,3 +142,26 @@ See [Bot accounts](/bots#errors) for every code. `NETWORK` means the call never 
 Treat everything people write as untrusted text. Don't let a message from a stranger move money, however the model reads it.
 
 `examples/bots/pulse.mjs` is the same loop with plain commands (`help`, `balance`, `tip @name 0.25`, `post <text>`), no model needed.
+
+## Run it on a server
+
+A bot only answers while your program is running. Messages sent to it while it's off are still delivered to the chat and kept, and `start()` answers them when it comes back, but nobody replies in between. Run the bot somewhere that stays on, such as a small container or a process manager, and not on a laptop.
+
+Give it the two values from `~/.zend/bots/<handle>.json` as environment variables, and keep them secret:
+
+```bash
+ZEND_BOT_API_KEY=zbot_live_...        # "apiKey"
+ZEND_BOT_PRIVATE_KEY=MC4CAQAw...      # "privateKey"; needed only if the bot pays
+```
+
+`examples/bots/Dockerfile` in the AppKit repo runs `gemini-pulse.mjs` this way. Use a restart policy so it comes back after a crash, and only one copy at a time: two copies would both answer.
+
+### On Cloudflare Workers
+
+Because Zend can send events to a webhook, a bot doesn't need a server at all. `examples/bots/pulse-worker/` in the AppKit repo is a complete Worker: Zend posts each message to it, it asks a Gemini model what to say, and it replies through the bot API. Nothing runs between messages.
+
+```bash
+zend bot webhook set pulsebot https://pulse-bot.<you>.workers.dev --events message.received
+```
+
+The Worker checks the signature, answers Zend at once, and does the model call and reply in the background. It keeps recent chat history in KV and skips events it has already answered. Payment signing uses the Workers Web Crypto API; the example's tests check it produces the same signature as the Node SDK. The example's README has the deploy steps.

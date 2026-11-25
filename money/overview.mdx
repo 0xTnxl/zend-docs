@@ -13,7 +13,7 @@ Your app never touches balances, keys or payment screens. It asks; Zend shows it
 | Permission | `pay` | `request_payment` | `create_link` | `prize` | `unlock` |
 | You get back | `paymentId` | `id`, `url` | `id` (Zend shares the link) | The prize | `paymentId`, `receiptId` |
 | Webhook | `payment.completed` | `payment.completed` per payer | `link.claimed` per collector | `prize.*` | `unlock.bought`, `payment.completed` |
-| Minimum | $0.01 | $0.01 | $1 per person | $1 | $0.01 per payee |
+| Minimum | $0.01 | $0.01 | $0.10 per person | $1 | $0.01 per payee |
 
 ## Amounts
 
@@ -37,7 +37,7 @@ Pass `reference` (up to 64 characters), such as your order or game ID. It comes 
 ## Rules Zend enforces
 
 - Your app's [tier limits](/ship/limits): payment size, daily spend per user, links per day, link size.
-- Zend-wide limits on links and prizes.
+- Zend-wide limits on links and prizes: today a money link holds at most $20 and a prize is at most $20, whatever your tier.
 - Only one money sheet at a time. A second call while one is open rejects with `BUSY`.
 - `USER_CANCELLED` means the user tapped Cancel. It's not an error to report.
 
