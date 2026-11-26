@@ -1,9 +1,20 @@
 ---
 title: "Prizes"
-description: "Host-funded prizes that Zend holds until your server says who won."
+description: "Money a host puts up that Zend holds until your server says who gets it: prizes, or holds for jobs, deals and bounties."
 ---
 
-A host puts up a prize, players join for free, and your server decides the winners. Zend's prize rules hold the money until then. Entry fees and stakes aren't available.
+A host puts up money, people join for free, and your server decides who gets it. Zend's prize rules hold the money until then. Entry fees and stakes aren't available.
+
+## Prize or hold
+
+The same rules cover two kinds of use. Pick the words Zend shows with `kind`:
+
+| `kind` | Use it for | Zend's sheets and notifications say |
+|---|---|---|
+| `"prize"` (default) | Games, contests, tournaments | "Put up a prize of ₦15,000", "Join for a chance to win", "Results are in", "Prize paid" |
+| `"hold"` | Paying someone once your rules are met: creator deals, jobs, bounties, deposits | "Hold ₦15,000", "Join to get paid from", "Decision made", "Paid out", "Money returned" |
+
+Only the words change. The rules, limits, webhooks and API are the same. `zend.prize.get` and the webhooks return `kind`. Zend app versions from before `kind` show prize wording for both.
 
 ## Setup
 
@@ -32,7 +43,7 @@ A host puts up a prize, players join for free, and your server decides the winne
 
 ```text
 create (host funds) → join (players, free) → resolve (your server signs)
-   → wait (dispute window, at least 10 min) → paid
+   → wait (disputeSecs, see below) → paid
 
 During the wait: your server can correct the result once; the host can cancel (everything back to host).
 No result by the resolve deadline: everything back to host.
@@ -44,7 +55,7 @@ No result by the resolve deadline: everything back to host.
 |---|---|
 | `joinInSecs` | At least 60. Joining closes at this time |
 | `resolveInSecs` | The results deadline. Must be later than `joinInSecs`, and at most 30 days |
-| `disputeSecs` | The wait after results. Default 3600 (1 hour). Values under 600 are raised to 600 (10 minutes). At most 7 days |
+| `disputeSecs` | The wait after results, when the host can still stop the payout. Default 3600 (1 hour). At most 7 days. The shortest wait depends on your tier; see [The wait after results](#the-wait-after-results) |
 | `maxPlayers` | 1–500 |
 
 Times count from when the host creates the prize. A time outside these rules fails with `INVALID_DEADLINES`, and `maxPlayers` outside 1–500 with `INVALID_MAX_PLAYERS`.
@@ -53,6 +64,24 @@ Times count from when the host creates the prize. A time outside these rules fai
 - The dispute window starts when Zend accepts the result. A correction starts it again.
 - When the window ends, Zend pays the winners. When the results deadline passes with no result, Zend returns the whole prize to the host. Zend checks for both about every 60 seconds, so expect up to a minute's delay.
 - The host can cancel only during the dispute window. Cancelling returns the whole prize to the host (`prize.refunded` with `reason: "vetoed"`). Before results, or after the window, it fails with `WINDOW_CLOSED`.
+
+## The wait after results
+
+The wait is the host's chance to stop a wrong or unfair payout, so Zend limits how short it can be. Asking for less than allowed never fails: Zend raises the wait instead, and `dispute_secs` on the prize shows what it applied.
+
+| Tier | Shortest wait |
+|---|---|
+| private | 10 minutes |
+| public | 2 minutes |
+| growth | 1 minute |
+
+A wait under 10 minutes also needs:
+
+- A prize of at most $20.
+- At most 50 such prizes per app, and 10 per host, in any 24 hours.
+- A Zend app version that supports short waits. Older versions refuse to sign them; ask for 10 minutes or more if your users may be on one.
+
+Past any of these, the wait is 10 minutes. Zend can turn short waits off for an app that misuses them. The host's sheet says how long the wait is before they confirm. Use a short wait only when your server checks results carefully before sending them, because the host has less time to catch a mistake.
 
 ## In your page
 
@@ -65,6 +94,7 @@ const prize = await zend.prize.create({
   disputeSecs: 3600,
   reference: "tournament_9",
   interactionId,
+  kind: "prize", // or "hold"
 });
 
 await zend.prize.join(prize.id);   // players

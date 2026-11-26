@@ -42,7 +42,7 @@ Headers:
 
 `from`, `to`, `by` and `for` are `appUserId`s. `by` on `link.claimed` is `null` if the collector has never connected your app. `price_ngn`, `ngn_per_usd` and `rate_id` are `null` unless the payment was priced in Naira.
 
-`prize` (and `data` on `prize.created`) is `{ id, app, app_name, host, pot_usd, pot_ngn, max_players, player_count, join_deadline, resolve_deadline, dispute_secs, dispute_ends, status, winners, corrected, reference, interaction_id, joined, is_host }`, the same shape `zend.prize.get` returns. In webhooks, `joined` and `is_host` are always `false`. `status` is `open`, `resolved`, `paid` or `refunded`. `winners` is `[{ address, amount_usd, app_user_id }]` once there's a result. `digest` is the Sui transaction digest of the step that changed the prize.
+`prize` (and `data` on `prize.created`) is `{ id, app, app_name, host, pot_usd, pot_ngn, max_players, player_count, join_deadline, resolve_deadline, dispute_secs, dispute_ends, status, winners, corrected, reference, interaction_id, joined, is_host, kind }`, the same shape `zend.prize.get` returns. In webhooks, `joined` and `is_host` are always `false`. `status` is `open`, `resolved`, `paid` or `refunded`. `kind` is `prize` or `hold`. `winners` is `[{ address, amount_usd, app_user_id }]` once there's a result. `digest` is the Sui transaction digest of the step that changed the prize.
 
 ## Verify signatures
 

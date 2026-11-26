@@ -101,6 +101,7 @@ Host-funded prizes. Needs `prize`. See [Prizes](/money/prizes).
 prize.create(p: {
   joinInSecs: number; resolveInSecs: number; maxPlayers: number;
   disputeSecs?: number; reference?: string; interactionId?: string;
+  kind?: "prize" | "hold"; // the words Zend shows; default "prize"
 } & ({ amount: number } | { price: { ngn: number } })): Promise<Prize>
 prize.join(id: string): Promise<Prize>
 prize.cancel(id: string): Promise<Prize>
