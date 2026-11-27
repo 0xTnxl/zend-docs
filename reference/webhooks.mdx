@@ -31,6 +31,11 @@ Headers:
 | `link.claimed` | `{ link_id, by, amount_usd, reference }` |
 | `random.drawn` | A [draw](/fairness/random-draws) finished: `{ interaction_id, label, kind, n, k, value, transaction_id, attestation, verify: { package, registry } }`. Sent once per draw, whether a page or your server asked |
 | `people.connected` | `{ from, to, interaction_id, mutual, at }`. `from` added `to`; `mutual` is `true` when `to` had already added `from` |
+| `device.payment.received` | A device your app runs was paid: the [device event](/devices#events) `data` plus `device_id` |
+| `device.checkin` | Someone checked in at one of your devices |
+| `device.reading` | `{ device_id, receipt }`. Check `receipt` with `verifyDeviceReading` before using it |
+| `device.command` / `device.config.updated` | You sent a command or changed settings (a copy of what the device got) |
+| `device.command.acked` | `{ device_id, command_id, name, ok, message }`: the device answered a command |
 | `unlock.listed` | The [listing](/money/unlock) |
 | `unlock.bought` | `{ item, listing_id, receipt_id, payment_id, by, for, amount_usd, transaction_id }`. `receipt_id` can be `null` |
 | `unlock.gifted` | `{ item, listing_id, receipt_id, from, to, transaction_id }` |

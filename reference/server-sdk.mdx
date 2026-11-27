@@ -139,6 +139,22 @@ Signs the result with your resolver key and posts it.
 
 Payout happens after the dispute window unless the host cancels. See [Prizes](/money/prizes).
 
+## Devices your app runs
+
+```ts
+createDevice({ name, hardware?, max_request_ngn? }): Promise<{ device_id, device_key, signing_secret, name }>
+listDevices(): Promise<{ devices: { id, name, hardware, last_seen_at, paused, config }[] }>
+setDeviceConfig(id, config): Promise<{ ok: true }>
+sendDeviceCommand(id, name, args?): Promise<{ id, status: "sent" }>
+removeDevice(id): Promise<{ ok: true }>
+```
+
+The key and signing secret come back once, from `createDevice`. Payments to these devices go to your app's payout account, and their events reach your webhook as `device.<type>`. See [Devices](/devices#devices-your-zapp-runs).
+
+## verifyDeviceReading(receipt, zendPublicKeyHex)
+
+`true` when `sha256(receipt.signed_body) == receipt.reading_hash` and `receipt.signature` is Zend's Ed25519 signature over it. Get `zendPublicKeyHex` from `GET /api/zend/v2/apps/attest/key` (`public_key`). Then read values from `JSON.parse(receipt.signed_body)`. See [Signed readings](/devices#signed-readings).
+
 ## verifyWebhook(rawBody, header, secret, toleranceSecs?)
 
 Returns `true` when `x-zend-signature` matches the raw body and is no older than `toleranceSecs` (default 300). Pass the raw body, before JSON parsing. See [Webhooks](/reference/webhooks#verify-signatures).

@@ -1,0 +1,367 @@
+---
+title: "Devices"
+description: "Build hardware on Zend: ESP32, Arduino and Raspberry Pi boards that take payments, check people in, take settings and commands from your phone, and send signed readings."
+---
+A Zend device is a board you build: a laundry timer, a water point, a gym door, a charging locker, a delivery box. Paired to your account, it can:
+
+| It can | For example |
+|---|---|
+| **Ask people to pay you** and know within a second when they have | ₦500 for a wash, ₦100 for 20 litres |
+| **Share each payment** with up to 3 people, in the same payment | 20% to the shop that hosts your machine |
+| **Sell passes** | A day pass that opens every door in the group |
+| **Check people in** with Zend, no payment needed | Gym check-in, event entry, a class register |
+| **Take settings and commands** from your phone | Change the price to ₦600, "open locker 4", "free cycle" |
+| **Alert you** | "Soap is low", "Offline for 30 minutes", "Takings are 5× usual" |
+| **Send readings Zend signs** | A scale's weight, a cooler's temperature, "parcel delivered", which a ZApp can use to settle a hold |
+| **Belong to a ZApp** | A laundry ZApp runs every machine on campus; a TV joins a party room |
+
+A device is not an account and holds no money. Payments go straight to your Zend balance, and shares go straight to theirs. A device can't send money or see a balance, so a stolen device can only ask people to pay **you**.
+
+New to hardware? Start with [Device projects](/device-projects).
+
+## Boards
+
+| Board | Library | Notes |
+|---|---|---|
+| ESP32, ESP32-S3, ESP32-C3, Arduino Nano ESP32 | Arduino library `Zend` | TLS checked with the ESP32 core's CA bundle. Examples: `PayToWash`, `GymDoor` |
+| Raspberry Pi and other Linux boards | `zend_device.py` | Python standard library only. Examples: `water_dispenser.py`, `delivery_box.py` |
+| ESP32 or Pico W running MicroPython | `zend.py` | For classrooms and quick builds |
+| Arduino Uno, Nano and boards with no network | | Connect them over serial to an ESP32 or a Pi running a library |
+
+Libraries and examples: [`zend-devices`](https://github.com/zendfi/zend-devices).
+
+## How it works
+
+<Steps>
+  <Step title="Pair">
+    The board, or your laptop with `zend device pair`, starts pairing and shows a 6-character code or a QR of `zdfi.me/device-auth/<code>`. In the Zend app, go to **Settings → Devices → Add** (or scan the QR), check the name, and tap **Add device**. The board collects its device key (`zdevice_live_…`) and signing secret (`zdsig_…`) once.
+  </Step>
+  <Step title="Act">
+    The board asks for a payment, makes a check-in code, or sends a reading, and shows the returned `url` as a QR.
+  </Step>
+  <Step title="Listen">
+    The board keeps one long-poll request open. Payments, check-ins, commands and new settings arrive as events signed with the device's secret. The library checks every signature before your code sees the event.
+  </Step>
+</Steps>
+
+## Taking payments
+
+```cpp
+#include <WiFi.h>
+#include <Zend.h>
+
+Zend zend(ZEND_DEVICE_KEY, ZEND_DEVICE_SECRET);
+String waiting;
+
+void loop() {
+  if (buttonPressed() && waiting.isEmpty()) {
+    waiting = "wash-" + String(esp_random() % 100000);
+    ZendRequest r = zend.request(500, waiting, "Wash, 30 minutes");   // ₦500
+    if (r.ok) showQr(r.url); else showText(r.error);
+  }
+  ZendEvent e;
+  if (zend.next(e, 5) && e.type == "payment.received" && e.reference == waiting) {
+    waiting = "";
+    startWash();
+  }
+}
+```
+
+```python
+from zend_device import ZendDevice
+
+zend = ZendDevice.from_env(cursor_file="/var/tmp/zend.cursor")
+r = zend.request(100, reference="water-17", note="20 litres")   # show r["url"] as a QR
+for p in zend.payments():
+    if p["reference"] == "water-17":
+        run_pump(90)
+        break
+```
+
+The payer sees your device's name on Zend's sheet and receipt ("Laundry, machine 3: Wash, 30 minutes"), and you get the usual "You got paid" notification. Save the event cursor (`zend.cursor()` on ESP32, `cursor_file` in Python) so a restart neither misses nor repeats a payment.
+
+### Sharing each payment
+
+In **Settings → Devices**, tap a device (or a group) and choose **Share payments**, then write `@shopowner 20, @landlord 10`. From then on, every payment to that device is split in the same payment:
+
+- Up to 3 people, together at most 90%. You get the rest.
+- A group's shares apply to every device in it that has no shares of its own.
+- The payer sees who gets a part before they confirm ("Part of it goes to Mama Ngozi (20%)"), and each person gets a "You got your share" notification.
+- Shared payments are paid from a Zend balance (bank transfer pays only you, so it's turned off for them).
+- A share under $0.01, for example 10% of ₦50, stays with you.
+
+### Passes
+
+Give `pass_secs` with a request and paying buys a pass:
+
+```cpp
+zend.request(1500, "daypass", "Day pass", 900, 24L * 3600);   // a 24-hour pass
+```
+
+The `payment.received` event carries `person` and `pass_valid_until`. A pass covers every device in the same group, so the front door and the pool door share it. Buying again before a pass ends adds to it. Check one at any time with `hasPass(person)` (`GET /api/v1/device/passes/:person`).
+
+## Checking people in
+
+A check-in tells a device who's in front of it without any money moving: a gym, a club, an event gate, a class register, a loyalty stamp.
+
+```python
+c = zend.checkin(reference="door", note="Front door")   # show c["url"] as a QR
+for e in zend.listen():
+    if e["type"] == "checkin":
+        open_door() if e["pass_valid_until"] else show("No pass yet")
+```
+
+The person scans the code with Zend and sees the device's name, its owner, and a **Share my name** switch (off by default). The device gets:
+
+| Field | What it is |
+|---|---|
+| `person` | A code for this person (`zp_…`). The same at every device **you** own, different for every other owner. Never their number, @handle or balance |
+| `name` | Their name, only if they turned **Share my name** on |
+| `pass_valid_until` | When their pass for this group ends, if they hold one |
+
+A check-in code works once and lasts 5 minutes.
+
+## Settings and commands from your phone
+
+**Settings** are a small JSON object the owner edits in **Settings → Devices** (or a ZApp sets): `{"price_ngn": 500, "minutes": 30}`. A group's settings apply to every device in it, and a device's own settings win key by key. The board reads them with `config()` at start and gets `config.updated` with the full `config` whenever they change, so you never reflash to change a price.
+
+**Commands** are one-off instructions: `open`, `restart`, `free_cycle`. They arrive as a `command` event with `name`, `args` and `command_id`. Answer each one, and the owner sees the result under **Recent commands**:
+
+```cpp
+if (e.type == "command") {
+  if (e.data["name"] == "free_cycle") { startWash(); zend.ack(e.commandId, true); }
+  else zend.ack(e.commandId, false, "Unknown command");
+}
+```
+
+## Alerts
+
+- **From the device:** `alert("Soap is running low")` sends a notification to the owner and the group's staff, up to 10 an hour.
+- **Offline:** choose **Tell me when it goes offline** (5, 30, 60 or 180 minutes). You get one alert when it goes quiet and one when it's back.
+- **Unusual takings:** Zend tells you once a day if a device takes more than 5 times its daily average (and at least ₦5,000). That can be a sign that someone found a way to fake button presses or reuse a code.
+
+## Groups and staff
+
+Put devices in a group, such as a hostel laundry room or a fleet of kiosks, to:
+
+- see the group's takings together,
+- give every device the same settings and shares,
+- share passes across the group,
+- add **staff** by @handle. Staff see the group's devices, takings and alerts in their own Zend app, but can't change anything.
+
+Up to 20 groups per account and 20 staff per group.
+
+## Signed readings
+
+A reading is a measurement Zend signs: a weight, a temperature, a flow, a "delivered".
+
+```python
+receipt = zend.reading("weight", value=42.5, unit="kg", reference="farmer-118")
+```
+
+Zend adds each reading to one hash chain (each links to the one before) and signs it with its attestation key, the same key as [attestations](/fairness/attestations). The receipt is:
+
+```json
+{
+  "signed_body": "{\"v\":1,\"id\":981,\"device_id\":\"…\",\"label\":\"weight\",\"value\":42.5,\"unit\":\"kg\",…,\"prev_hash\":\"…\"}",
+  "reading_hash": "sha256 of signed_body, hex",
+  "signature": "ed25519 by Zend over reading_hash, hex",
+  "reading": { "…": "signed_body, parsed" }
+}
+```
+
+Anyone can fetch a receipt at `GET /api/zend/v2/devices/readings/:id` and check it against Zend's key (`GET /api/zend/v2/apps/attest/key`) with `verifyDeviceReading` from `@zendfi/appkit/server`. Readings are limited to 30 a minute per device.
+
+### Settling a hold on a reading
+
+A reading can release money. The sender funds a [hold](/money/prizes#prize-or-hold) in your ZApp, the rider or farmer joins it, and your server pays out when a device you run sends the reading:
+
+```ts
+import { ZendServer, verifyWebhook, verifyDeviceReading } from "@zendfi/appkit/server";
+
+// In your webhook handler, for `device.reading`:
+if (!verifyDeviceReading(e.data.receipt, zendKey)) return;
+const r = JSON.parse(e.data.receipt.signed_body);       // trust only the signed copy
+if (r.label === "delivered" && r.value === 1) {
+  const p = await zend.getPrize(holds.get(r.reference));
+  await zend.resolvePrize(p.id, [p.players[0].address], [p.pot_usd], process.env.ZEND_RESOLVER_SEED!);
+}
+```
+
+The sender can still stop the payout during the wait after the result, which is their protection if a device was tampered with. Keep that wait at 10 minutes or longer for device-driven results. The full example is `examples/zapp_settle_hold.mjs`.
+
+## Devices your ZApp runs
+
+A ZApp can own devices directly, with its app key, without any person pairing them:
+
+```ts
+const zend = new ZendServer(process.env.ZEND_APP_KEY!);
+const d = await zend.createDevice({ name: "Hall B, machine 3", hardware: "esp32" });
+// flash d.device_key and d.signing_secret onto the board
+await zend.setDeviceConfig(d.device_id, { price_ngn: 600 });
+await zend.sendDeviceCommand(d.device_id, "show_scores", { room: "KQ7M2D" });
+```
+
+- Payments go to your app's payout account (set it with `zend apps payout <slug> <username>`).
+- Every device event also reaches your [webhook](/reference/webhooks) as `device.<type>` with `device_id`: `device.payment.received`, `device.checkin`, `device.reading`, `device.config.updated`, `device.command`, and `device.command.acked` when the board answers.
+- The devices also show in your payout account's **Settings → Devices**, marked "Run by {app}".
+
+Use it for a laundry ZApp that runs every machine, a party TV that shows a live room's votes (send it commands from your server), or a raffle box that takes entries and shows a [fair draw](/fairness/random-draws).
+
+| Method | Path (app key) | Does |
+|---|---|---|
+| POST | `/api/zend/v2/apps/server/devices` | `{ name, hardware?, max_request_ngn? }` → `{ device_id, device_key, signing_secret }`, once |
+| GET | `/api/zend/v2/apps/server/devices` | Your app's devices |
+| PUT | `/api/zend/v2/apps/server/devices/:id/config` | `{ config }` |
+| POST | `/api/zend/v2/apps/server/devices/:id/commands` | `{ name, args? }` |
+| POST | `/api/zend/v2/apps/server/devices/:id/remove` | The key stops working at once |
+
+Up to 1,000 devices per app.
+
+## Without a board: try it from your laptop
+
+```bash
+zend device pair "Test box" --hardware laptop
+zend device request "Test box" 100 --ref try-1   # prints a QR; pay it from the Zend app
+zend device events "Test box" --follow           # shows the event and "signature ok"
+zend device checkin "Test box"                   # scan it with Zend
+zend device reading "Test box" weight 42.5 --unit kg
+```
+
+See [`zend device`](/cli/device).
+
+## Device API
+
+Base URL `https://api.usezend.app`. Device calls send `Authorization: Bearer zdevice_live_…`.
+
+### Pairing (no key, rate limited per IP)
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| POST | `/api/v1/devices/sessions` | `{ name, hardware? }` | `{ session_id, short_code, approval_url, expires_at }` |
+| GET | `/api/v1/devices/sessions/:id` | | `{ status }`: `pending`, `approved`, `denied` or `expired` |
+| POST | `/api/v1/devices/sessions/:id/key` | | `{ device_id, device_key, signing_secret }`, once. Then `410 SESSION_INVALIDATED` |
+
+A pairing lasts 10 minutes. Poll the status every 2 seconds.
+
+### The device
+
+| Method | Path | Body or query | Returns |
+|---|---|---|---|
+| GET | `/api/v1/device/me` | | `{ id, name, paused, group_id, owner, config, config_version, limits }` |
+| GET | `/api/v1/device/config` | | `{ config, version }` |
+| POST | `/api/v1/device/requests` | `{ amount_ngn, reference?, note?, expires_in_secs?, pass_secs? }` | `{ id, url, status, amount_label, expires_at, shared }` |
+| GET | `/api/v1/device/requests/:id` | | `{ status }`: `waiting`, `paid`, `expired` or `cancelled` |
+| POST | `/api/v1/device/requests/:id/cancel` | | Cancels a waiting request |
+| POST | `/api/v1/device/checkins` | `{ reference?, note? }` | `{ id, url, expires_at }` |
+| GET | `/api/v1/device/passes/:person` | | `{ valid, valid_until }` |
+| POST | `/api/v1/device/commands/:id/ack` | `{ ok, message? }` | Answers a command |
+| POST | `/api/v1/device/alerts` | `{ message }` (≤ 140 characters) | Notifies the owner and staff |
+| POST | `/api/v1/device/readings` | `{ label, value?, unit?, data?, reference? }` | The signed receipt |
+| GET | `/api/v1/device/events` | `?after=<seq>&wait=<0–30>` | `{ events, next }` |
+| POST | `/api/v1/device/test` | | Sends the device a `test` event |
+
+- `amount_ngn` is from ₦50 up to the device's limit (₦20,000 unless the owner changes it, at most ₦100,000).
+- `reference` is up to 64 bytes and comes back on events.
+- `expires_in_secs` is 60 seconds to 24 hours (default 15 minutes).
+- `pass_secs` is 60 seconds to 366 days.
+- A request can be paid once.
+- `label` (readings) is 1–32 of a–z, 0–9 and `_`, starting with a letter. `data` is at most 2 KB.
+
+### Events
+
+`GET /api/v1/device/events` waits up to `wait` seconds for an event after `after`. Without `after` it returns only new events. Send `next` back as `after`. Events are kept for 7 days.
+
+```json
+{
+  "events": [{
+    "seq": 42,
+    "type": "payment.received",
+    "data_raw": "{\"amount_kobo\":50000,\"amount_ngn\":500,\"method\":\"zend\",\"pass_valid_until\":null,\"person\":\"zp_…\",\"reference\":\"wash-3\",\"request_id\":\"zl_abcdefghjk\"}",
+    "data": { "…": "data_raw, parsed" },
+    "created_at": "2027-01-15T08:00:00Z",
+    "signed": "zdev1|<device_id>|42|payment.received|zl_abcdefghjk|50000|wash-3|1800000000|<sha256 of data_raw>",
+    "sig": "<hex>"
+  }],
+  "next": 42
+}
+```
+
+| `type` | When | `data` |
+|---|---|---|
+| `payment.received` | A request was paid | `request_id`, `amount_kobo`, `amount_ngn`, `reference`, `method` (`zend` or `bank_transfer`), `person`, `pass_valid_until` |
+| `checkin` | Someone checked in | `request_id` (the check-in id), `reference`, `person`, `name`, `pass_valid_until` |
+| `command` | The owner or ZApp sent a command | `command_id`, `name`, `args` |
+| `config.updated` | Settings changed | `version`, `config` |
+| `test` | You called `/api/v1/device/test` | |
+
+### Checking an event
+
+`signed` is:
+
+```text
+zdev1|<device_id>|<seq>|<type>|<request_id>|<amount_kobo>|<reference>|<unix seconds>|<sha256(data_raw)>
+```
+
+A `|` inside a field is replaced with `/`. Before acting:
+
+1. Check `sig == hex(HMAC-SHA256(signing_secret, signed))`, comparing in constant time.
+2. Check the last field of `signed` is `hex(sha256(data_raw))`.
+3. Read every value from `data_raw`, not from `data`.
+
+All three libraries do this, and skip any event that fails. Test vector:
+
+| | |
+|---|---|
+| secret | `zdsig_test` |
+| data_raw | `{"amount_kobo":50000,"reference":"wash\|3","request_id":"zl_abcdefghjk"}` |
+| signed | `zdev1\|11111111-2222-3333-4444-555555555555\|42\|payment.received\|zl_abcdefghjk\|50000\|wash/3\|1800000000\|1d15dbd68e9edb6effa946062c2aedf3afe0f310c23cc1306b204fcd27652681` |
+| sig | `6af6c67740040b970078f48ad104e0c3308ffb7c36bbe4cacf78aa32fdfcfa54` |
+
+## In the Zend app
+
+**Settings → Devices** shows your devices by group, with each device's takings today, whether it's online, and labels for "Shared" and "Run by {app}". Tap a device to change its settings, send a command, see recent commands, share payments, set an offline alert, move it to a group, set the largest amount it can ask for, rename, pause or remove it. Tap a group for its settings, shares, staff, name, or to remove it (its devices stay). Staff see the same lists, read-only.
+
+## Limits
+
+| Limit | Value |
+|---|---|
+| Devices | 50 per account, 1,000 per ZApp |
+| Groups | 20 per account, 20 staff each |
+| Request amount | ₦50 to the device's limit (default ₦20,000, at most ₦100,000) |
+| New requests | 120 per device per hour (`HOURLY_LIMIT`) |
+| API calls | 60 per device per minute (`RATE_LIMITED`) |
+| Alerts | 10 per device per hour (`ALERT_LIMIT`) |
+| Readings | 30 per device per minute |
+| Shares | Up to 3 people, together at most 90% |
+| Settings | 4 KB per device or group; commands' `args` 1 KB |
+| Pairing | 10 minutes; key collected once |
+| Check-in codes | 5 minutes, used once |
+| Events kept | 7 days |
+
+## Errors
+
+| Code | Meaning |
+|---|---|
+| `INVALID_DEVICE_KEY` | Wrong, removed or missing key |
+| `DEVICE_PAUSED` | The owner paused the device |
+| `BELOW_MINIMUM` / `ABOVE_DEVICE_LIMIT` | The amount is outside the device's limits |
+| `INVALID_PASS` | `pass_secs` outside 60 seconds to 366 days |
+| `HOURLY_LIMIT` / `RATE_LIMITED` / `ALERT_LIMIT` | Slow down |
+| `OWNER_UNAVAILABLE` | The owner's account can't receive payments right now |
+| `INVALID_LABEL` / `INVALID_VALUE` / `DATA_TOO_LARGE` | Fix the reading |
+| `NOT_WAITING` | The request or command was already answered |
+| `CHECKIN_CLOSED` | The check-in code was used or expired; make a new one |
+| `SHARED_NEEDS_ZEND` | A shared payment can't be paid by bank transfer |
+| `SPLIT_INVALID` / `PERSON_NOT_FOUND` | Fix the shares: up to 3 existing @handles, at most 90% together |
+| `NO_PAYOUT` | (ZApps) Set your payout account before creating devices |
+| `SESSION_INVALIDATED` | The key was already collected; pair again |
+
+## Keeping devices safe
+
+- **Treat every device key as public eventually.** A key on a board can be read out of its flash. That's why a device can only ask people to pay you, can't move money, and can't see a balance. Remove a lost device in **Settings → Devices**.
+- **Encrypt the flash** on ESP32 (flash encryption and secure boot) for devices in public places.
+- **Check every event.** Signature, data hash, values from `data_raw`. Then someone on the same Wi-Fi can't fake a "paid" or a command.
+- **Use your own `reference` per request**, and act only on the payment whose reference is on the screen.
+- **Don't let a reading pay out on its own if the device can be reached by others.** Settle holds with a wait, so the payer can stop a payout from a tampered device.
+- **Watch the unusual-takings alert.** It's your early warning.

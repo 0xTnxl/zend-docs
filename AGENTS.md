@@ -20,19 +20,20 @@
 - `reference/`: client SDK, server SDK, REST API, webhooks, errors.
 - `cli/`: one page per command group.
 - `pay-with-zend`, `bots`: building outside ZApps.
+- `devices`, `device-projects`: building hardware (ESP32, Arduino, Raspberry Pi). Libraries live in the `zend-devices` repo; the API in `src/devices.rs` and `src/device_manage.rs`.
 - `examples/`: Coin Flip (no server), Owambe Rooms (server-run rooms, connect) and ZApp Check (a test app with a linked bot and a prize).
 
 ## Positioning
 - Zend is "the money network for the internet". Developer line: "Build on the money network for the internet."
 - Frame features as one of three layers: People (@names, one ID per person across apps), Money (pay, ask links, money links, splits, prizes), Reach (chats, feed, Discover, links that open anywhere).
-- Two ways to build: inside Zend (ZApps, `@zendfi/appkit`) and anywhere (Pay with Zend).
+- Three ways to build: inside Zend (ZApps, `@zendfi/appkit`), anywhere (Pay with Zend), and in hardware (Devices).
 - Don't claim: open protocol, permissionless, decentralized, AppKit working outside Zend, user numbers, "instant".
 - Full guide: `drafts/positioning.md`.
 
 ## Terminology
 - "ZApp" for an app built on Zend. "Zend" for the product, never "ZendFi" in reader-facing text.
 - "money link" (not escrow link or give link), "ask link" for `request`, "collect" (not claim), "take back" (not reclaim).
-- "app key" for `zapp_sk_...`; "API key" for account keys from `zend keys` (`zdev_live_...`).
+- "app key" for `zapp_sk_...`; "API key" for account keys from `zend keys` (`zdev_live_...`); "device key" for `zdevice_live_...` and "signing secret" for `zdsig_...`.
 - `appUserId` / `app_user_id` (`zu_...`) for the per-user id apps see.
 - Package names: `@zendfi/appkit` and `@zendfi/appkit/server`; CLI package `pay-with-zend-cli`, command `zend`.
 

@@ -115,6 +115,26 @@ try {
 
 See [Bot accounts](/bots#errors) and the [Bot SDK](/reference/bot-sdk#pay).
 
+## Devices
+
+| Code | Meaning / what to do |
+|---|---|
+| `INVALID_DEVICE_KEY` | Wrong, removed or missing device key. Pair again |
+| `DEVICE_PAUSED` | The owner paused the device in Settings → Devices |
+| `BELOW_MINIMUM` / `ABOVE_DEVICE_LIMIT` | Under ₦50, or over this device's largest amount |
+| `INVALID_PASS` | `pass_secs` outside 60 seconds to 366 days |
+| `HOURLY_LIMIT` / `RATE_LIMITED` / `ALERT_LIMIT` | Over 120 requests an hour, 60 calls a minute, or 10 alerts an hour |
+| `OWNER_UNAVAILABLE` | The owner's account can't receive payments right now |
+| `INVALID_LABEL` / `INVALID_VALUE` / `DATA_TOO_LARGE` | Fix the reading: label a–z, 0–9, `_`; a finite number; `data` at most 2 KB |
+| `INVALID_CONFIG` / `CONFIG_TOO_LARGE` / `INVALID_COMMAND` / `INVALID_ARGS` | Settings are a JSON object of at most 4 KB; commands are a–z, 0–9, `_`, with `args` at most 1 KB |
+| `NOT_WAITING` | The request or command was already answered |
+| `CHECKIN_CLOSED` | The check-in code was used or expired |
+| `SHARED_NEEDS_ZEND` | A shared device payment can't be paid by bank transfer |
+| `SPLIT_INVALID` / `PERSON_NOT_FOUND` | Up to 3 existing @handles, at most 90% together, not yourself |
+| `TOO_MANY_DEVICES` / `TOO_MANY_GROUPS` / `TOO_MANY_STAFF` | 50 devices (1,000 per ZApp), 20 groups, 20 staff per group |
+| `NO_PAYOUT` | A ZApp needs a payout account (`zend apps payout`) before it can make devices |
+| `SESSION_NOT_PENDING` / `SESSION_INVALIDATED` | The pairing expired, was answered, or its key was already collected |
+
 ## Draws and live rooms
 
 | Code | Meaning / what to do |

@@ -130,6 +130,38 @@ The Zend app calls these on the owner's behalf, with the owner's own session. Th
 | POST | `/api/zend/bots/:id/posting` | `{ enabled }` |
 | POST | `/api/zend/bots/:id/suspend` / `resume` | Pause or resume |
 
+## Devices
+
+Pairing, from the board or `zend device pair` (rate limited per IP address):
+
+| Credential | Method | Path | Notes |
+|---|---|---|---|
+| None | POST | `/api/v1/devices/sessions` | `{ name, hardware? }`. Returns `{ session_id, short_code, approval_url, expires_at }` |
+| None | GET | `/api/v1/devices/sessions/:id` | `{ status }`: `pending`, `approved`, `denied` or `expired` |
+| None | POST | `/api/v1/devices/sessions/:id/key` | `{ device_id, device_key, signing_secret }`, once. Otherwise `410 SESSION_INVALIDATED` |
+| None | GET | `/api/zend/v2/devices/readings/:id` | A signed reading receipt |
+
+The device itself, with `Authorization: Bearer zdevice_live_...`:
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/v1/device/me` | Name, owner, group, settings, limits |
+| GET | `/api/v1/device/config` | `{ config, version }` |
+| POST | `/api/v1/device/requests` | `{ amount_ngn, reference?, note?, expires_in_secs?, pass_secs? }` |
+| GET | `/api/v1/device/requests/:id` | `{ status }`: `waiting`, `paid`, `expired` or `cancelled` |
+| POST | `/api/v1/device/requests/:id/cancel` | Cancels a waiting request |
+| POST | `/api/v1/device/checkins` | `{ reference?, note? }`. Returns `{ id, url, expires_at }` |
+| GET | `/api/v1/device/passes/:person` | `{ valid, valid_until }` |
+| POST | `/api/v1/device/commands/:id/ack` | `{ ok, message? }` |
+| POST | `/api/v1/device/alerts` | `{ message }` |
+| POST | `/api/v1/device/readings` | `{ label, value?, unit?, data?, reference? }`. Returns the signed receipt |
+| GET | `/api/v1/device/events` | `?after=<seq>&wait=<0-30>`, long poll. Each event has `data_raw`, `signed` and `sig` |
+| POST | `/api/v1/device/test` | Sends the device a `test` event |
+
+Devices a ZApp runs, with its app key: `POST` and `GET /api/zend/v2/apps/server/devices`, `PUT …/devices/:id/config`, `POST …/devices/:id/commands`, `POST …/devices/:id/remove`.
+
+See [Devices](/devices#device-api) for bodies, the event format and the signature check.
+
 ## Endpoints the Zend client uses
 
 `/apps/by-slug/:slug/*` (including `unlock/*`), `/apps/interactions`, `/apps/cards`, `/apps/feed`, `/apps/prizes/*`, `/apps/people/connect`, `/apps/people/chat`, `/seal/*`, `/me/connected-apps` and the live room socket for users are called by the Zend app on your page's behalf. You reach them through the client SDK; don't call them directly.

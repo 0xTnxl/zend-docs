@@ -1,0 +1,88 @@
+---
+title: "zend device"
+description: "Pair ESP32, Arduino and Raspberry Pi devices, and act as them: payments, check-ins, readings, alerts and command answers."
+---
+Devices are boards that ask people to pay you. See [Devices](/devices) for how they work.
+
+Every command except `pair` and `list` takes the device's name and uses the key saved in `~/.zend/devices/<name>.json` (mode 0600).
+
+## pair
+
+```bash
+zend device pair "Laundry, machine 3" --hardware esp32
+```
+
+Prints a 6-character code and a QR. In the Zend app, go to **Settings → Devices → Add** and type the code, or scan the QR. When you approve, the CLI saves the device key (`zdevice_live_…`) and signing secret (`zdsig_…`). Copy them onto the board as `ZEND_DEVICE_KEY` and `ZEND_DEVICE_SECRET`. Never commit them.
+
+| Option | Meaning |
+|---|---|
+| `--hardware <kind>` | Shown on the approval screen, e.g. `esp32`, `rpi4`, `uno-r4` |
+
+## list
+
+Devices paired from this machine.
+
+## me
+
+```bash
+zend device me "Laundry, machine 3"
+```
+
+Checks the key works and shows the device's limits and owner.
+
+## request
+
+```bash
+zend device request "Laundry, machine 3" 500 --ref wash-3 --note "Wash, 30 minutes"
+```
+
+Asks for ₦500 as the device and prints the QR, just as a board would show it. Pay it from the Zend app to try the whole flow.
+
+## events
+
+```bash
+zend device events "Laundry, machine 3" --follow
+```
+
+Prints each event and whether its signature checks out. `--follow` keeps a long poll open the way a board does. `--after <seq>` starts after a sequence number.
+
+## test
+
+Sends the device a `test` event.
+
+## config
+
+Shows the settings the device gets from its owner (or its ZApp).
+
+## checkin
+
+```bash
+zend device checkin "Gym door" --note "Front door"
+```
+
+Makes a check-in code as the device and prints its QR. Scan it with Zend and watch `zend device events`.
+
+## reading
+
+```bash
+zend device reading "Scale 1" weight 42.5 --unit kg --ref farmer-118
+```
+
+Sends a reading and prints Zend's signed receipt.
+
+## alert
+
+```bash
+zend device alert "Laundry, machine 3" Soap is running low
+```
+
+Sends the owner (and the group's staff) a notification.
+
+## ack
+
+```bash
+zend device ack "Laundry, machine 3" <command id>
+zend device ack "Laundry, machine 3" <command id> --fail "Door jammed"
+```
+
+Answers a command, the way a board does after running it.

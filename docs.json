@@ -60,7 +60,9 @@
             "group": "Build anywhere",
             "pages": [
               "pay-with-zend",
-              "bots"
+              "bots",
+              "devices",
+              "device-projects"
             ]
           },
           {
@@ -125,6 +127,7 @@
             "pages": [
               "cli/apps",
               "cli/bot",
+              "cli/device",
               "cli/keys",
               "cli/config",
               "cli/payments",

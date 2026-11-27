@@ -1,0 +1,121 @@
+---
+title: "Device projects"
+description: "Hardware to build on Zend with ESP32, Arduino and Raspberry Pi: machines that take payments, doors that check people in, boards that alert you, and sensors that settle payments."
+---
+Two Zend pieces run on a board today:
+
+- **[Devices](/devices):** the board asks people to pay its owner, shares payments, sells passes, checks people in, takes settings and commands from the owner's phone, alerts them, and sends readings Zend signs. It holds no money and can't send any.
+- **[Bots](/bots):** a Raspberry Pi (or any board running Node) runs a bot account. It can message people, post to the feed, and get paid by @handle.
+
+Each idea below is marked with what it needs:
+
+| Label | Meaning |
+|---|---|
+| **Device** | Works today with the [device API](/devices) |
+| **Bot** | Works today with a bot account on the board |
+| **Later** | Needs something Zend doesn't have yet (named in the idea) |
+
+## Pay to use a machine
+
+| Project | Board and parts | How it works | Needs |
+|---|---|---|---|
+| **Pay-per-wash laundry** | ESP32, relay, OLED, button | Press, scan, pay ₦500, the machine runs 30 minutes. Full sketch in `examples/PayToWash` | Device |
+| **Water point** | Raspberry Pi, pump relay | ₦100 for 20 litres; the pump stops by time or a flow sensor. `examples/water_dispenser.py` | Device |
+| **Phone-charging locker** | ESP32, solenoid locks | Pay for an hour; the locker opens. The owner can open any locker from their phone with an `open` command | Device |
+| **Solar or generator power by the hour** | ESP32, meter relay, current sensor | Each payment adds hours; the relay turns off when they run out | Device |
+| **Cyber café printer** | Raspberry Pi, USB printer | Send a file, the Pi counts the pages and asks ₦50 a page, then prints | Device |
+| **Snack or drinks box** | Arduino Nano ESP32, servo | One item drops per payment; the reference names the slot | Device |
+| **Gym or pool day pass** | ESP32, turnstile relay | Buy a 24-hour pass (`pass_secs`), then check in at any door in the group. Full sketch in `examples/GymDoor` | Device |
+
+## Fun and entertainment
+
+| Project | Board and parts | How it works | Needs |
+|---|---|---|---|
+| **Party jukebox** | Raspberry Pi, speaker | Guests scan a song's QR and pay ₦200 to jump the queue. The reference is the song | Device |
+| **Owambe spray board** | ESP32, LED strip, small screen | Guests "spray" the celebrant by scanning; every payment fires the lights and shows the name and amount on the screen. The money goes to the celebrant's Zend | Device |
+| **Busker's tip jar** | ESP32, LED ring, buzzer | Plays a jingle and lights up for every tip. A small screen shows today's count | Device |
+| **Claw machine or arcade** | ESP32 wired to the coin input | A payment counts as one coin, so old machines need no coin mechanism. Put it in a bar and give the bar 30% of every play with a share | Device |
+| **Photo booth** | Raspberry Pi, camera, printer | Pay, smile, print. The reference ties the photo to the payment | Device |
+| **Karaoke at a bar** | Raspberry Pi, screen | Pay to add your song to the queue on the big screen | Device |
+
+## Doors, gates and registers (no money)
+
+| Project | Board and parts | How it works | Needs |
+|---|---|---|---|
+| **Gym or club check-in** | ESP32, door relay, OLED | Members scan the check-in code; the door opens if they hold a pass | Device |
+| **Event gate** | Raspberry Pi, screen | Guests who bought a pass check in once; the screen greets them by name if they shared it | Device |
+| **Class or workshop register** | ESP32, small screen | Students scan as they arrive; the teacher gets the list from the device's events | Device |
+| **Loyalty stamps** | ESP32 at a shop counter | Every check-in is a stamp, counted per `person`; the 10th coffee is free | Device |
+| **Staff clock-in** | Raspberry Pi by the door | Staff check in and out; the owner gets an alert if nobody opened by 8am | Device |
+
+## Run a fleet
+
+| Project | How it works | Needs |
+|---|---|---|
+| **Machines in other people's shops** | Put a vending box or charging station in a shop and share 20% of every payment with the shop owner, automatically | Device |
+| **Hostel laundry room with a caretaker** | One group for all machines, the caretaker added as staff: they see takings and get "Soap is low" alerts, but can't change prices | Device |
+| **Change prices everywhere at once** | Set `{"price_ngn": 600}` on the group; every machine picks it up within seconds | Device |
+| **Campus laundry ZApp** | A ZApp creates and runs every machine on campus, shows which are free, and takes bookings | Device + ZApp |
+| **Party TV** | A TV joins an Owambe room as the big screen; the ZApp's server sends it the votes as commands | Device + ZApp |
+| **Raffle box** | Pay to enter at the box, press the big button, and the ZApp runs a [fair draw](/fairness/random-draws) shown on its screen | Device + ZApp |
+
+## Sensors that settle payments
+
+A device's signed reading can release a [hold](/money/prizes#prize-or-hold) in a ZApp. The payer still has the wait after the result to stop a payout from a tampered device.
+
+| Project | Board and parts | How it works | Needs |
+|---|---|---|---|
+| **Delivery box that pays the rider** | Raspberry Pi, lid switch, distance sensor | The sender holds the fee; the box sends `delivered` when the parcel is in, and the ZApp pays the rider. Full code in `examples/delivery_box.py` and `examples/zapp_settle_hold.mjs` | Device + ZApp |
+| **Cold-chain transport** | ESP32, temperature sensor | The cooler sends a signed temperature every 10 minutes; the transporter is paid only if every reading stayed in range | Device + ZApp |
+| **Produce by weight** | Raspberry Pi, load cell | The aggregator's scale sends the weight; the farmer is paid for exactly those kilos from a held amount | Device + ZApp |
+| **Borehole or solar install bounty** | ESP32, flow or current sensor | The installer is paid when the sensor shows water flowing or panels producing for a day | Device + ZApp |
+| **Generator maintenance** | ESP32 on the controller | Run-hours readings prove the generator ran after the technician's visit | Device + ZApp |
+
+## Boards that talk to you
+
+These don't take payments at all. They use a bot account to message people or post to the feed.
+
+| Project | Board and parts | How it works | Needs |
+|---|---|---|---|
+| **Doorbell that messages you** | Raspberry Pi, button, camera | Someone rings; your bot DMs you "Someone's at the gate" | Bot |
+| **Generator and fuel reminder** | Raspberry Pi, run-hours sensor | DMs you when the generator has run 200 hours, or when fuel is low | Bot |
+| **Fish pond or poultry monitor** | Raspberry Pi, temperature and water sensors | DMs the farmer when the water is too warm or a feeder is empty | Bot |
+| **Shop open sign** | Raspberry Pi, door switch | Posts "We're open" to your bot's feed when the shop door opens in the morning | Bot |
+| **Borehole or tank level** | Raspberry Pi, ultrasonic sensor | Messages everyone in the compound who wrote to the bot when the tank is nearly empty | Bot |
+
+A bot can message people who wrote to it first, and people who use the ZApp it belongs to. Message your own bot once to start getting alerts.
+
+## Schools, campuses and communities
+
+| Project | Board and parts | How it works | Needs |
+|---|---|---|---|
+| **Hostel laundry room** | One ESP32 per machine | Each machine is its own device; the hostel owner sees each one's takings in Settings → Devices | Device |
+| **Class fund box** | ESP32, screen | Classmates scan to add to a trip or party; the screen counts the payments | Device |
+| **Church or mosque offering screen** | Raspberry Pi, TV | Shows a QR beside the projector; every gift lights a thank-you on screen | Device |
+| **Lab equipment by the hour** | ESP32 on the power supply | Students pay per hour of a 3D printer or soldering station | Device |
+| **"Build a vending machine" lesson** | ESP32, servo, OLED | A two-hour workshop for robotics clubs: wire it, pair it, sell sweets for ₦50 | Device |
+
+## Ideas that need what's next
+
+| Project | What it would do | What Zend needs first |
+|---|---|---|
+| **Recycling machine that pays per kilo** | A scale weighs bottles and pays the person who brought them | Device payouts within limits the owner sets |
+| **Bottle and gas cylinder deposits** | Pay a deposit, get it back when the scanner sees the return | Device payouts |
+| **Offline market stall** | A stall takes payments while the network is down and settles later | Offline device payments |
+| **Tap to pay at the canteen** | A tap pays without opening Zend's sheet, within a daily limit the person set | Tap payments under an allowance |
+| **Find a water point near you** | Discover shows the nearest devices that take Zend | A devices map |
+
+Tell us which of these you'd build: it decides what comes next.
+
+## Picking a first build
+
+| If you have | Start with |
+|---|---|
+| An ESP32, a relay and a button | Pay-per-wash or the busker's tip jar |
+| An ESP32, a relay and an OLED | The gym door (passes and check-in) |
+| A Raspberry Pi and a speaker | The party jukebox |
+| A Raspberry Pi and a button | The doorbell bot |
+| A Raspberry Pi, a switch and a ZApp | The delivery box that pays the rider |
+| A classroom of ESP32s | The vending machine lesson |
+
+Every device build follows the same three steps: `zend device pair`, ask for something (`request()`, `checkin()` or `reading()`), then act on the verified event. See [Devices](/devices).
